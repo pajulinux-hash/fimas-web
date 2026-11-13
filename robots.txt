@@ -1,0 +1,3 @@
+User-agent: *
+Disallow: /cenik/
+Sitemap: https://www.fimas.cz/sitemap.xml
