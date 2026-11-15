@@ -44,6 +44,7 @@ section{padding:88px 0}
 .btn-ghost{border-color:rgba(255,255,255,.5);color:#fff}.btn-ghost:hover{background:rgba(255,255,255,.1);border-color:#fff}
 
 /* oznámení */
+.notice[hidden]{display:none}
 .notice{background:var(--accent);color:var(--ink);font-weight:600;font-size:.92rem;text-align:center;padding:.55em 44px;position:relative}
 .notice button{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--ink);font-size:1.3rem;cursor:pointer;line-height:1}
 
@@ -211,9 +212,9 @@ footer a{text-decoration:none}footer a:hover{color:#fff}
 </head>
 <body>
 
-<!-- Oznámení: upravte text, nebo celý blok smažte. Skryje se automaticky po datu v data-until. -->
-<div class="notice" id="notice" data-until="2026-11-16">
-  V pondělí 16. 11. 2026 je prodejna i pneuservis z technických důvodů zavřena.
+<!-- Oznámení: text se načítá ze souboru oznameni.txt (upravuje se přímo na GitHubu) -->
+<div class="notice" id="notice" hidden>
+  <span id="noticeText"></span>
   <button aria-label="Zavřít" onclick="this.parentNode.remove()">×</button>
 </div>
 
@@ -467,8 +468,18 @@ footer a{text-decoration:none}footer a:hover{color:#fff}
 
 <script>
 document.getElementById('y').textContent=new Date().getFullYear();
-// oznámení zmizí den po datu v data-until
-(function(){var n=document.getElementById('notice');if(!n)return;var u=n.dataset.until;if(u&&new Date()>new Date(u+'T23:59:59'))n.remove();})();
+// oznámení ze souboru oznameni.txt
+fetch('oznameni.txt?v='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():''}).then(function(t){
+  var od=null,doo=null,txt=[];
+  t.split(/\r?\n/).forEach(function(l){l=l.trim();if(!l||l[0]==='#')return;
+    var m=l.match(/^platnost\s+od\s*:\s*(\d{4}-\d{2}-\d{2})/i);if(m){od=m[1];return}
+    m=l.match(/^platnost\s+do\s*:\s*(\d{4}-\d{2}-\d{2})/i);if(m){doo=m[1];return}
+    txt.push(l)});
+  var now=new Date();
+  if(!txt.length||(od&&now<new Date(od+'T00:00:00'))||(doo&&now>new Date(doo+'T23:59:59')))return;
+  document.getElementById('noticeText').textContent=txt.join(' ');
+  document.getElementById('notice').hidden=false;
+}).catch(function(){});
 // zavření menu po kliknutí na mobilu
 document.querySelectorAll('#menu a').forEach(function(a){a.addEventListener('click',function(){document.getElementById('menu').classList.remove('open')})});
 // skryté obrázky, které se nenačtou
