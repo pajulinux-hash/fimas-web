@@ -24,4 +24,6 @@ Původní A/CNAME záznamy směřující na Webnode je nutné odstranit. Subdom�
 
 ## Údržba
 - Oznámení nahoře: blok `#notice` v `index.html`, skryje se sám den po `data-until`.
-- Obrázky se zatím načítají z CDN Webnode a Weebly – před zrušením těchto webů je stáhněte do složky `img/` a přepište cesty.
+- Fotky galerie jsou v `img/g/` (plná velikost, WebP) a `img/g/t/` (náhledy). Seznam alb je v `index.html` v proměnné `GAL`.
+- Dokumenty (obchodní podmínky, GDPR) jsou ve složce `docs/`.
+- Oznámení nahoře se upravuje v souboru `oznameni.txt`.
