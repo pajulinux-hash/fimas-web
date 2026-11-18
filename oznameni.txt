@@ -11,6 +11,6 @@
 #    (nebo před něj dejte #).
 # ==========================================================
 
-platnost do: 2026-11-19
+platnost do: 2026-11-30
 
-#Už je otevřeno
+Vítáme Vás na našich nových internetových stránkách
