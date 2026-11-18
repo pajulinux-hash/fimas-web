@@ -11,6 +11,6 @@
 #    (nebo před něj dejte #).
 # ==========================================================
 
-platnost do: 2026-11-16
+platnost do: 2026-11-19
 
-V pondělí 16. 11. 2026 je prodejna i pneuservis z technických důvodů zavřena. 
+Už je otevřeno
