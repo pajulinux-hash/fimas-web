@@ -1306,7 +1306,7 @@ function Header() {
               {favCount > 0 && <span className="cart-count">{favCount}</span>}
             </button>
             <button className="hdr-btn" onClick={() => setPage(user ? 'account' : 'login')} title="Účet">
-              <Icon name="user" size={18}/> <span className="hide-xs">{user ? user.name.split(' ')[0] : 'Přihlásit'}</span>
+              <Icon name="user" size={18}/> <span className="hide-xs">{user ? (String(user.name || user.email || 'Účet').split(/[\s@]/)[0] || 'Účet') : 'Přihlásit'}</span>
             </button>
             <button className="hdr-btn cart-btn" onClick={() => setPage('cart')}>
               <Icon name="cart" size={18}/> <span className="hide-xs">Košík</span>
@@ -1316,7 +1316,7 @@ function Header() {
         </div>
         <nav className="nav-bar">
           <div className="nav-inner">
-            {NAV_ITEMS.map(n => (
+            {NAV_ITEMS.filter(n => n.id !== 'admin' || (user && user.isAdmin)).map(n => (
               <div key={n.id} className={`nav-item${page===n.id?' active':''}`} onClick={() => setPage(n.id)}>{n.label}</div>
             ))}
           </div>
@@ -3761,7 +3761,7 @@ function Footer() {
         </div>
       </div>
       <div className="footer-bottom">
-        <span>© 2026 {COMPANY.name} · Autor: Pavel Juráček · Verze e-shopu 01.26</span>
+        <span><span onClick={()=>{setPage('admin');window.scrollTo(0,0);}} style={{cursor:'default'}}>©</span> 2026 {COMPANY.name} · Autor: Pavel Juráček · Verze e-shopu 01.26</span>
         <span style={{display:'flex',alignItems:'center',gap:8}}>
           {lastUpdated && <span style={{color:'rgba(255,255,255,0.4)',fontSize:11}} title="Ceny a dostupnost se denně ve 3:00 přebírají z obchod.fimas.cz">Ceny a sklad aktualizovány: {lastUpdated.toLocaleString('cs-CZ',{day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'})}</span>}
           <span>Všechna práva vyhrazena</span>
@@ -3977,6 +3977,11 @@ function App() {
   // Load products: merge EMBEDDED_PRODUCTS with data.json from scraper
   const [lastUpdated, setLastUpdated] = useState(null);
   const [typeIndex, setTypeIndex] = useState(() => (TYPE_INDEX = fallbackTypeIndex()));
+  // Skrytý vstup do adminu: adrparts.cz/#admin (tlačítko v menu vidí jen přihlášený admin)
+  useEffect(() => {
+    const h = () => { if(location.hash === '#admin') { setPage('admin'); history.replaceState(null, '', location.pathname + location.search); } };
+    h(); window.addEventListener('hashchange', h); return () => window.removeEventListener('hashchange', h);
+  }, []);
   const refreshProducts = useCallback(() => {
     fetch(DATA_JSON_URL + '?t=' + Date.now(), { cache: 'no-store' })
       .then(r => { if(!r.ok) return Promise.reject('fetch failed'); const lm = r.headers.get('last-modified'); return r.json().then(j => [j, lm]); })
