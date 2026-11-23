@@ -49,7 +49,8 @@ def main():
     files, page = [], ''
     while True:
         r = call('GET', f"{API}/{cur['name']}/files?pageSize=1000" + (f'&pageToken={page}' if page else ''))
-        files += [f['path'] for f in r.get('files', [])]
+        # /__/… (init.js, init.json) generuje Firebase Hosting sám – do verze je nenahrávat
+        files += [f['path'] for f in r.get('files', []) if not f['path'].startswith('/__/')]
         page = r.get('nextPageToken')
         if not page:
             break
