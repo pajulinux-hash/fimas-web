@@ -37,6 +37,12 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    // Nastavení webu (žlutý pruh s oznámením): číst může každý, měnit jen admin
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Vše ostatní zakázáno
     match /{document=**} {
       allow read, write: if false;
