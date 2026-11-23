@@ -495,7 +495,7 @@ const FIREBASE_CONFIG = {
   appId: '1:242200418531:web:ab233244ba1828eabd0dd6',
 };
 // Kdo smí do admin panelu (musí mít ověřený e-mail). Stejný seznam je ve firestore.rules!
-const ADMIN_EMAILS = ['info@fimas.cz', 'adr@fimas.cz', 'pajulinux@gmail.com'];
+const ADMIN_EMAILS = ['pajulinux@gmail.com'];
 const isAdminEmail = (e) => ADMIN_EMAILS.includes(String(e || '').trim().toLowerCase());
 let _fb = null;
 function getFb() {

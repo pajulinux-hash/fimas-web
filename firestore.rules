@@ -4,12 +4,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Administrátor = přihlášený účet s OVĚŘENÝM e-mailem z tohoto seznamu
-    // (stejný seznam je v index.html v konstantě ADMIN_EMAILS)
+    // Administrátor = jen pajulinux@gmail.com s OVĚŘENÝM e-mailem
+    // (stejná adresa je v index.html v konstantě ADMIN_EMAILS)
     function isAdmin() {
       return request.auth != null
         && request.auth.token.email_verified == true
-        && request.auth.token.email in ['info@fimas.cz', 'adr@fimas.cz', 'pajulinux@gmail.com'];
+        && request.auth.token.email == 'pajulinux@gmail.com';
     }
     function isOwner(uid) {
       return request.auth != null && request.auth.uid == uid;
