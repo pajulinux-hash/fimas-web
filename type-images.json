@@ -1,0 +1,224 @@
+{
+"axle": {
+"1P": [
+"typy/naprava-1P.webp"
+],
+"1R": [
+"typy/naprava-1R.webp"
+],
+"1T": [
+"typy/naprava-1T.webp"
+],
+"1V": [
+"typy/naprava-1V.webp"
+],
+"1Y": [
+"typy/naprava-1Y.webp"
+],
+"1H": [
+"typy/naprava-1H.webp"
+],
+"3T": [
+"typy/naprava-3T.webp"
+],
+"4H": [
+"typy/naprava-4H.webp"
+],
+"4P": [
+"typy/naprava-4P.webp"
+],
+"4R": [
+"typy/naprava-4R.webp"
+],
+"4T": [
+"typy/naprava-4T.webp"
+],
+"4V": [
+"typy/naprava-4V.webp"
+],
+"4Y": [
+"typy/naprava-4Y.webp"
+],
+"5T": [
+"typy/naprava-5T.webp"
+],
+"5V": [
+"typy/naprava-5V.webp"
+],
+"5Y": [
+"typy/naprava-5Y.webp"
+],
+"6T": [
+"typy/naprava-6T.webp"
+],
+"BA": [
+"typy/naprava-BA.webp"
+],
+"DA": [
+"typy/naprava-DA.webp"
+],
+"IA": [
+"typy/naprava-IA.webp"
+]
+},
+"brake": {
+"CA": [
+"typy/brzda-CA.webp"
+],
+"DF": [
+"typy/brzda-DF.webp"
+],
+"FC": [
+"typy/brzda-FC.webp"
+],
+"FF": [
+"typy/brzda-FF.webp"
+],
+"IX": [
+"typy/brzda-IX.webp"
+],
+"VA": [
+"typy/brzda-VA-1.webp",
+"typy/brzda-VA-2.webp"
+],
+"VC": [
+"typy/brzda-VC-1.webp",
+"typy/brzda-VC-2.webp"
+],
+"WA": [
+"typy/brzda-WA-1.webp",
+"typy/brzda-WA-2.webp"
+],
+"WC": [
+"typy/brzda-WC-1.webp",
+"typy/brzda-WC-2.webp"
+],
+"BA": [
+"typy/brzda-BA.webp"
+],
+"DA": [
+"typy/brzda-DA.webp"
+],
+"FS": [
+"typy/brzda-FS.webp"
+],
+"IA": [
+"typy/brzda-IA.webp"
+],
+"IM": [
+"typy/brzda-IM.webp"
+],
+"IR": [
+"typy/brzda-IR.webp"
+],
+"IT": [
+"typy/brzda-IT.webp"
+],
+"JA": [
+"typy/brzda-JA.webp"
+],
+"JB": [
+"typy/brzda-JB-1.webp",
+"typy/brzda-JB-2.webp"
+],
+"JF": [
+"typy/brzda-JF-1.webp",
+"typy/brzda-JF-2.webp"
+],
+"KA": [
+"typy/brzda-KA.webp"
+],
+"KB": [
+"typy/brzda-KB-1.webp",
+"typy/brzda-KB-2.webp"
+],
+"KF": [
+"typy/brzda-KF-1.webp",
+"typy/brzda-KF-2.webp"
+],
+"MC": [
+"typy/brzda-MC-1.webp",
+"typy/brzda-MC-2.webp"
+],
+"MM": [
+"typy/brzda-MM-1.webp",
+"typy/brzda-MM-2.webp"
+],
+"NA": [
+"typy/brzda-NA.webp"
+],
+"NF": [
+"typy/brzda-NF.webp"
+],
+"PA": [
+"typy/brzda-PA-1.webp",
+"typy/brzda-PA-2.webp"
+],
+"PG": [
+"typy/brzda-PG-1.webp",
+"typy/brzda-PG-2.webp"
+],
+"QA": [
+"typy/brzda-QA.webp"
+],
+"QC": [
+"typy/brzda-QC.webp"
+],
+"QR": [
+"typy/brzda-QR.webp"
+],
+"RE": [
+"typy/brzda-RE-1.webp",
+"typy/brzda-RE-2.webp"
+],
+"TA": [
+"typy/brzda-TA.webp"
+],
+"TC": [
+"typy/brzda-TC.webp"
+],
+"TE": [
+"typy/brzda-TE-1.webp",
+"typy/brzda-TE-2.webp"
+],
+"TG": [
+"typy/brzda-TG.webp"
+],
+"TR": [
+"typy/brzda-TR-1.webp",
+"typy/brzda-TR-2.webp"
+],
+"VD": [
+"typy/brzda-VD.webp"
+],
+"VE": [
+"typy/brzda-VE.webp"
+],
+"VG": [
+"typy/brzda-VG-1.webp",
+"typy/brzda-VG-2.webp"
+],
+"VU": [
+"typy/brzda-VU-1.webp",
+"typy/brzda-VU-2.webp"
+],
+"XU": [
+"typy/brzda-XU-1.webp",
+"typy/brzda-XU-2.webp"
+],
+"YA": [
+"typy/brzda-YA-1.webp",
+"typy/brzda-YA-2.webp",
+"typy/brzda-YA-3.webp",
+"typy/brzda-YA-4.webp"
+],
+"YC": [
+"typy/brzda-YC-1.webp",
+"typy/brzda-YC-2.webp"
+],
+"ZE": [
+"typy/brzda-ZE-1.webp",
+"typy/brzda-ZE-2.webp"
+]
+}
+}
