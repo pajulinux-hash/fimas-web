@@ -387,6 +387,35 @@
     .td-big { flex:1; overflow:auto; -webkit-overflow-scrolling:touch; padding:0 12px 16px; text-align:center; }
     .td-big img { max-width:min(100%, 1000px); background:#fff; border-radius:6px; }
     @media (max-width:600px) { .td-grid { grid-template-columns:repeat(2,1fr); gap:8px; } .td-thumb { height:170px; } }
+
+    /* ===== Obsah z obchod.fimas.cz (popisy, tabulky, katalog) ===== */
+    .eshop-html { font-size:14px; line-height:1.5; color:var(--text); overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .eshop-html img { max-width:100%; height:auto; }
+    .eshop-html table { border-collapse:collapse; margin:10px 0; font-size:13px; min-width:max-content; }
+    .eshop-html td, .eshop-html th { border:1px solid var(--border); padding:5px 8px; vertical-align:top; }
+    .eshop-html tr:first-child td { background:var(--bg); font-weight:700; }
+    .eshop-html td:empty { padding:0; border:none; }
+    .eshop-html hr { border:none; border-top:1px solid var(--border); margin:12px 0; }
+    .eshop-html h2, .eshop-html h3 { font-size:16px; margin:10px 0 6px; }
+    .eshop-html a { color:var(--blue); }
+    .detail-desc { margin-top:28px; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px 20px; }
+    .detail-desc h3 { margin:0 0 10px; font-size:18px; }
+    .detail-desc .eshop-html div[style*="float"], .detail-desc .eshop-html img[style*="float"] { float:none !important; }
+    .detail-params { width:100%; border-collapse:collapse; margin-top:16px; font-size:14px; }
+    .detail-params th, .detail-params td { border-bottom:1px solid var(--border); padding:7px 8px; text-align:left; }
+    .detail-params th { color:var(--text-muted); font-weight:600; width:45%; }
+    .detail-gallery { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .detail-gallery button { width:64px; height:64px; padding:2px; border:2px solid var(--border); border-radius:8px; background:#fff; cursor:pointer; }
+    .detail-gallery button.active { border-color:var(--gold); }
+    .detail-gallery img { width:100%; height:100%; object-fit:contain; }
+    .cat-content { margin:0 0 16px; }
+    .cat-content-btn { padding:8px 14px; font-size:13px; font-weight:600; border:1px solid var(--border); border-radius:8px; background:#fff; color:var(--text); cursor:pointer; }
+    .cat-content-btn:hover { border-color:var(--gold); }
+    .cat-content-btn.dark { background:rgba(255,255,255,0.08); color:#fff; border-color:rgba(255,255,255,0.25); }
+    .cat-html { margin-top:10px; background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px; max-height:75vh; overflow:auto; }
+    .guide-html { color:#111; }
+    .eshop-note { margin:0 0 16px; padding:12px 16px; border-radius:10px; background:#fff7ed; border:1px solid #fdba74; color:#9a3412; font-size:14px; }
+    @media (max-width:600px) { .detail-desc { padding:14px; } .cat-html { padding:10px; } }
 </style>
 </head>
 <body>
@@ -398,6 +427,13 @@ const { useState, useEffect, useCallback, useMemo, useRef, createContext, useCon
 /* ===================== DATA ===================== */
 const CATALOG_URL = 'https://storage.googleapis.com/adr-fimas-katalog/eshop-catalog.json';
 const DATA_JSON_URL = 'https://storage.googleapis.com/adr-fimas-katalog/data.json';
+/* Doplňková data z obchod.fimas.cz (tools/crawl_adr.py + build_details.py): popisy s tabulkami a výkresy,
+   parametry, galerie fotek, obsah kategorií, rozkresy všech podskupin TYP, podsekce (facety), návod. */
+const DETAILS_URL = '/adr-details.json';
+const KATALOG_URL = '/adr-katalog.json';
+let DETAILS = null;
+const inCat = (p, slug) => p.categorySlug === slug || !!(p.extraSlugs && p.extraSlugs.includes(slug));
+const isPlaceholderImg = (u) => /pripravujeme|placeholder|no[-_]?image|noimg/i.test(String(u || ''));
 
 /* Map data.json categories → eshop categorySlug */
 const DATA_CAT_MAP = {
@@ -504,18 +540,25 @@ function syncFromData(cur, dp) {
   const u = { synced: true };
   const djSub = dp.subtitle || '';
   if (djSub && (!cur.subtitle || djSub.length > cur.subtitle.length)) u.subtitle = djSub;
-  if (!cur.image && dp.image) u.image = dp.image;
+  // fotka a název z obchod.fimas.cz mají přednost (vložená data měla u řady položek společnou/obecnou fotku)
+  if (dp.image && !isPlaceholderImg(dp.image)) u.image = dp.image;
+  else if (!cur.image && dp.image) u.image = dp.image;
+  const dn = (dp.name || '').trim();
+  if (dn && dn !== (cur.name || '').trim()) { u.name = dn; u.altName = cur.name; }
   if (dp.url && extractDnum(dp.url)) u.url = dp.url;           // skutečný odkaz na produkt
   const np = parsePrice(dp.price);
   if (np > 0) { u.price = np; u.priceDPH = Math.round(np * 1.21 * 100) / 100; }
   if (dp.stock !== undefined) u.stock = dp.stock === 'skladem';
   return { ...cur, ...u };
 }
+/* kategorie e-shopu, do kterých produkt na obchod.fimas.cz patří (jen skutečné kategorie, ne filtry typu „265 mm“) */
+const isMappedCat = (c) => !!c && (Object.prototype.hasOwnProperty.call(DATA_CAT_MAP, c) || c === 'řiditelné nápravy');
 function mergeProducts(embedded, dataJsonRaw) {
-  const dataByDnum = new Map(), dataByName = new Map();
+  const dataByDnum = new Map(), dataByName = new Map(), allByDnum = new Map();
   dataJsonRaw.forEach(p => {
     const dn = extractDnum(p.url);
-    if (dn && !dataByDnum.has(dn)) dataByDnum.set(dn, p);
+    if (dn) { if (!allByDnum.has(dn)) allByDnum.set(dn, []); allByDnum.get(dn).push(p); }
+    if (dn && (!dataByDnum.has(dn) || (!isMappedCat(dataByDnum.get(dn).category) && isMappedCat(p.category)))) dataByDnum.set(dn, p);
     const nk = (p.name || '').trim();
     if (nk && !dataByName.has(nk)) dataByName.set(nk, p);
   });
@@ -547,6 +590,13 @@ function mergeProducts(embedded, dataJsonRaw) {
     seen.add(dn);
     addedCount++;
     result.push(transformDataJsonProduct(p, 1000 + addedCount));
+  });
+  // produkt může být na obchod.fimas.cz ve více kategoriích → zobrazit ho ve všech
+  result.forEach(p => {
+    const dn = p.dn || extractDnum(p.url);
+    const es = allByDnum.get(dn) || [];
+    const slugs = [...new Set(es.filter(e => isMappedCat(e.category)).map(e => resolveCategory(e.category, p.name)))].filter(sl => sl !== p.categorySlug);
+    if (slugs.length) p.extraSlugs = slugs;
   });
   if (unverified.length) console.warn('[ADR E-shop] Nenalezeno v data.json (' + unverified.length + '):', unverified);
   console.log('[ADR E-shop] Merged: ' + embedded.length + ' embedded (' + matched + ' synced) + ' + addedCount + ' from data.json = ' + result.length + ' total');
@@ -890,16 +940,32 @@ function parseTypeCategory(cat) {
 const TYPE_IMAGES = {"axle":{"1P":["typy/naprava-1P.webp"],"1R":["typy/naprava-1R.webp"],"1T":["typy/naprava-1T.webp"],"1V":["typy/naprava-1V.webp"],"1Y":["typy/naprava-1Y.webp"],"1H":["typy/naprava-1H.webp"],"3T":["typy/naprava-3T.webp"],"4H":["typy/naprava-4H.webp"],"4P":["typy/naprava-4P.webp"],"4R":["typy/naprava-4R.webp"],"4T":["typy/naprava-4T.webp"],"4V":["typy/naprava-4V.webp"],"4Y":["typy/naprava-4Y.webp"],"5T":["typy/naprava-5T.webp"],"5V":["typy/naprava-5V.webp"],"5Y":["typy/naprava-5Y.webp"],"6T":["typy/naprava-6T.webp"],"BA":["typy/naprava-BA.webp"],"DA":["typy/naprava-DA.webp"],"IA":["typy/naprava-IA.webp"]},"brake":{"CA":["typy/brzda-CA.webp"],"DF":["typy/brzda-DF.webp"],"FC":["typy/brzda-FC.webp"],"FF":["typy/brzda-FF.webp"],"IX":["typy/brzda-IX.webp"],"VA":["typy/brzda-VA-1.webp","typy/brzda-VA-2.webp"],"VC":["typy/brzda-VC-1.webp","typy/brzda-VC-2.webp"],"WA":["typy/brzda-WA-1.webp","typy/brzda-WA-2.webp"],"WC":["typy/brzda-WC-1.webp","typy/brzda-WC-2.webp"],"BA":["typy/brzda-BA.webp"],"DA":["typy/brzda-DA.webp"],"FS":["typy/brzda-FS.webp"],"IA":["typy/brzda-IA.webp"],"IM":["typy/brzda-IM.webp"],"IR":["typy/brzda-IR.webp"],"IT":["typy/brzda-IT.webp"],"JA":["typy/brzda-JA.webp"],"JB":["typy/brzda-JB-1.webp","typy/brzda-JB-2.webp"],"JF":["typy/brzda-JF-1.webp","typy/brzda-JF-2.webp"],"KA":["typy/brzda-KA.webp"],"KB":["typy/brzda-KB-1.webp","typy/brzda-KB-2.webp"],"KF":["typy/brzda-KF-1.webp","typy/brzda-KF-2.webp"],"MC":["typy/brzda-MC-1.webp","typy/brzda-MC-2.webp"],"MM":["typy/brzda-MM-1.webp","typy/brzda-MM-2.webp"],"NA":["typy/brzda-NA.webp"],"NF":["typy/brzda-NF.webp"],"PA":["typy/brzda-PA-1.webp","typy/brzda-PA-2.webp"],"PG":["typy/brzda-PG-1.webp","typy/brzda-PG-2.webp"],"QA":["typy/brzda-QA.webp"],"QC":["typy/brzda-QC.webp"],"QR":["typy/brzda-QR.webp"],"RE":["typy/brzda-RE-1.webp","typy/brzda-RE-2.webp"],"TA":["typy/brzda-TA.webp"],"TC":["typy/brzda-TC.webp"],"TE":["typy/brzda-TE-1.webp","typy/brzda-TE-2.webp"],"TG":["typy/brzda-TG.webp"],"TR":["typy/brzda-TR-1.webp","typy/brzda-TR-2.webp"],"VD":["typy/brzda-VD.webp"],"VE":["typy/brzda-VE.webp"],"VG":["typy/brzda-VG-1.webp","typy/brzda-VG-2.webp"],"VU":["typy/brzda-VU-1.webp","typy/brzda-VU-2.webp"],"XU":["typy/brzda-XU-1.webp","typy/brzda-XU-2.webp"],"YA":["typy/brzda-YA-1.webp","typy/brzda-YA-2.webp","typy/brzda-YA-3.webp","typy/brzda-YA-4.webp"],"YC":["typy/brzda-YC-1.webp","typy/brzda-YC-2.webp"],"ZE":["typy/brzda-ZE-1.webp","typy/brzda-ZE-2.webp"]}};
 const typeImagesFor = (kind, codes) => { const m = TYPE_IMAGES[kind] || {}; for(const c of (codes || [])) if(m[c]) return m[c]; return []; };
 /* Rozkres k podskupině TYP BRZDY (podle labelu podskupiny) */
+const normLabel = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+/* rozkresy přímo z podskupin obchod.fimas.cz (adr-details.json → typeImg) */
+function eshopTypeImgs(label) { return (DETAILS && DETAILS.typeImg && DETAILS.typeImg[normLabel(label)]) || []; }
+function eshopAxleImgs(code) {
+  if(!DETAILS || !DETAILS.typeImg) return [];
+  for(const [k, v] of Object.entries(DETAILS.typeImg)) {
+    if(/^\d{3}x\d/.test(k)) continue;
+    const codes = (k.split('~')[0].match(/\b[A-Z0-9]{2}\b/g) || []);
+    if(codes.includes(code)) return v;
+  }
+  return [];
+}
+function brakeCodesOf(label) { const parts = normLabel(label).split('~').map(x => x.trim()); return (parts[2] || '').match(/\b[A-Z][A-Z0-9]\b/g) || []; }
 function brakeDrawings(label, idx) {
   const b = ((idx || TYPE_INDEX).brakes || []).find(x => x.label === label);
-  const codes = b ? b.codes : [];
-  return { images: typeImagesFor('brake', codes), title: 'Rozkres – brzda ' + codes.join(', ') };
+  const codes = b ? b.codes : brakeCodesOf(label);
+  const local = typeImagesFor('brake', codes);
+  return { images: local.length ? local : eshopTypeImgs(label), title: 'Rozkres – brzda ' + codes.join(', ') };
 }
 /* Rozkres k podskupině TYP NÁPRAVY: vlastní rozkres nápravy; když chybí, rozkres brzdy, která k nápravě patří
    (podskupina brzdy s nápravou v seznamu, např. XA~RW,VF,XL → RW; nebo brzda se stejným typovým kódem, např. NA → 350x60 35G NA) */
 function axleDrawings(code, idx) {
   const own = typeImagesFor('axle', [code]);
   if(own.length) return { images: own, title: 'Rozkres – náprava ' + code, own: true };
+  const shop = eshopAxleImgs(code);
+  if(shop.length) return { images: shop, title: 'Rozkres – náprava ' + code, own: true };
   const brakes = (idx || TYPE_INDEX).brakes || [];
   let rel = brakes.filter(b => b.axles.includes(code));
   if(!rel.some(b => typeImagesFor('brake', b.codes).length)) rel = brakes.filter(b => b.codes.includes(code));
@@ -1038,7 +1104,7 @@ function findAxleCode(text) {
 
 // Helper: get dynamic filter definitions for a category based on product data
 function getCategoryFilters(categorySlug, products) {
-  const catProducts = products.filter(p => p.categorySlug === categorySlug);
+  const catProducts = products.filter(p => inCat(p, categorySlug));
   const filters = [];
 
   switch(categorySlug) {
@@ -1535,6 +1601,17 @@ function AxlePartRow({p}) {
   );
 }
 
+function AxleGuide() {
+  const { details } = useApp();
+  const [open, setOpen] = useState(false);
+  if(!details || !details.guide) return null;
+  return (
+    <div style={{margin:'0 0 14px'}}>
+      <button className="cat-content-btn dark" onClick={() => setOpen(o => !o)}>{open ? '▾' : '▸'} Jak určit typ nápravy a brzdy? (štítek nápravy)</button>
+      {open && <EshopHtml html={details.guide} className="cat-html guide-html"/>}
+    </div>
+  );
+}
 function AxleIdentification() {
   const { products, setPage, setSearch, setFilterCategory, setFilterSubcategory, setSelectedProduct, addToCart, showToast, typeIndex } = useApp();
   const [showOther, setShowOther] = useState({});
@@ -1671,6 +1748,7 @@ function AxleIdentification() {
       <div className="axle-id-card">
         <h3>🔍 <span>Identifikace nápravy</span></h3>
         <p>Zadejte kód z výrobního štítku nápravy ADR a my vám zobrazíme odpovídající díly.</p>
+        <AxleGuide/>
         <div className="axle-input-row">
           <input className="axle-input" placeholder="Např. A-GA-06-FC-06-12345" value={code} onChange={e=>setCode(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')identify()}} />
           <button className="axle-btn" onClick={identify}>Identifikovat</button>
@@ -1831,7 +1909,7 @@ function CategoryGrid() {
       <h2 className="section-title">📦 Kategorie dílů</h2>
       <div className="cat-grid">
         {CATEGORIES.filter(c => !c.special).map(cat => {
-          const catProds = products.filter(p => p.categorySlug === cat.id);
+          const catProds = products.filter(p => inCat(p, cat.id));
           const count = catProds.length;
           const catImage = catProds.length > 0 ? catProds[0].image : null;
           return (
@@ -1894,7 +1972,7 @@ function ProductCard({product}) {
 
 /* ===================== CATALOG PAGE ===================== */
 function CatalogPage() {
-  const { products, search, setSearch, setPage, filterCategory, setFilterCategory, filterSubcategory, setFilterSubcategory, typeIndex } = useApp();
+  const { products, search, setSearch, setPage, filterCategory, setFilterCategory, filterSubcategory, setFilterSubcategory, typeIndex, details } = useApp();
   const [sort, setSort] = useState('name-asc');
   const [onlyKits, setOnlyKits] = useState(false);
   const [dynamicFilterValues, setDynamicFilterValues] = useState({});
@@ -1905,8 +1983,9 @@ function CatalogPage() {
   // Get dynamic filters for the current category
   const categoryFilters = useMemo(() => {
     if(!filterCategory) return [];
-    return getCategoryFilters(filterCategory, products);
-  }, [filterCategory, products]);
+    const base = getCategoryFilters(filterCategory, products);
+    return base.concat(eshopFacetFilters(filterCategory, products, details, base));
+  }, [filterCategory, products, details]);
 
   // Reset dynamic filters when category changes
   useEffect(() => { setDynamicFilterValues({}); }, [filterCategory]);
@@ -1926,9 +2005,9 @@ function CatalogPage() {
       // If search contains multiple terms separated by space, match ANY of them (OR logic for axle brake dims)
       const terms = q.split(/\s+/).filter(t => t.length > 0);
       if(terms.length > 1) {
-        arr = arr.filter(p => terms.some(t => p.name.toLowerCase().includes(t) || (p.code||'').toLowerCase().includes(t) || (p.subtitle||'').toLowerCase().includes(t)));
+        arr = arr.filter(p => terms.some(t => p.name.toLowerCase().includes(t) || (p.altName||'').toLowerCase().includes(t) || (p.code||'').toLowerCase().includes(t) || (p.subtitle||'').toLowerCase().includes(t)));
       } else {
-        arr = arr.filter(p => p.name.toLowerCase().includes(q) || (p.code||'').toLowerCase().includes(q) || (p.desc||'').toLowerCase().includes(q) || (p.subtitle||'').toLowerCase().includes(q) || (p.category||'').toLowerCase().includes(q) || (p.categorySlug||'').toLowerCase().includes(q));
+        arr = arr.filter(p => p.name.toLowerCase().includes(q) || (p.altName||'').toLowerCase().includes(q) || (p.code||'').toLowerCase().includes(q) || (p.desc||'').toLowerCase().includes(q) || (p.subtitle||'').toLowerCase().includes(q) || (p.category||'').toLowerCase().includes(q) || (p.categorySlug||'').toLowerCase().includes(q));
       }
     }
     // TYP NÁPRAVY / TYP BRZDY – položky z podkategorií obchod.fimas.cz (typeIndex)
@@ -1942,7 +2021,7 @@ function CatalogPage() {
       }
       arr = arr.filter(p => { const dn = productDnum(p); return dn && targetDnums.has(dn); });
     } else if(filterCategory) {
-      arr = arr.filter(p => p.categorySlug === filterCategory);
+      arr = arr.filter(p => inCat(p, filterCategory));
     }
     if(filterSubcategory && filterCategory !== 'axle-types' && filterCategory !== 'brake-types') arr = arr.filter(p => p.subcategory === filterSubcategory);
     if(onlyKits) arr = arr.filter(p => p.stock !== false);
@@ -1975,28 +2054,35 @@ function CatalogPage() {
     // TYP NÁPRAVY / TYP BRZDY – podkategorie přesně podle obchod.fimas.cz
     if(filterCategory === 'axle-types' || filterCategory === 'brake-types') {
       const have = new Set(); products.forEach(p => { const d = productDnum(p); if(d) have.add(d); });
+      // podskupiny, které jsou na obchod.fimas.cz zatím bez položek (jen rozkres) – ukázat také
+      const empties = ((details && details.emptyTypes) || []).filter(t => t.kind === (filterCategory === 'axle-types' ? 'axle' : 'brake'));
       if(filterCategory === 'axle-types') {
-        return [...typeIndex.axles.values()]
+        const list = [...typeIndex.axles.values()]
           .map(e => { const dims = AXLE_TYPES[e.code] ? AXLE_TYPES[e.code].join(', ') : ''; return { id:e.code, code:e.code, label: e.code + (dims ? ' — brzda ' + dims : ''), count: e.dnums.filter(d => have.has(d)).length }; })
-          .filter(x => x.count > 0)
-          .sort((x, y) => x.id.localeCompare(y.id, 'cs', {numeric:true}));
+          .filter(x => x.count > 0);
+        empties.forEach(t => (t.name.match(/\b[A-Z0-9]{2}\b/g) || []).forEach(c => { if(!list.some(x => x.id === c)) list.push({ id:c, code:c, label:c + ' (bez položek)', count:0, empty:true }); }));
+        return list.sort((x, y) => x.id.localeCompare(y.id, 'cs', {numeric:true}));
       }
       const dimKey = (d) => d.split('x').map(n => n.padStart(4,'0')).join('x');
       return typeIndex.brakes
         .map(b => ({ id:b.label, code:b.codes.join(', '), dim:b.dim, model:b.model + (b.axles.length ? ' · náprava ' + b.axles.join(', ') : ''),
                      label: b.codes.join(', ') + ' — ' + b.dim + ' ' + b.model + (b.axles.length ? ' (' + b.axles.join(', ') + ')' : ''), count: b.dnums.filter(d => have.has(d)).length }))
         .filter(x => x.count > 0)
+        .concat(empties.filter(t => /^\d{3}x\d/.test(t.name) && !typeIndex.brakes.some(b => normLabel(b.label) === t.name)).map(t => {
+          const parts = t.name.split('~').map(x => x.trim()); const codes = brakeCodesOf(t.name);
+          return { id:t.name, code:codes.join(', '), dim:parts[0], model:(parts[1] || ''), label:codes.join(', ') + ' — ' + parts[0] + ' ' + (parts[1] || '') + ' (bez položek)', count:0, empty:true };
+        }))
         .sort((x, y) => dimKey(x.dim).localeCompare(dimKey(y.dim)) || x.code.localeCompare(y.code));
     }
 
     // Normal subcategories
     const subs = new Map();
-    products.filter(p => p.categorySlug === filterCategory && p.subcategory).forEach(p => {
+    products.filter(p => inCat(p, filterCategory) && p.subcategory).forEach(p => {
       if(!subs.has(p.subcategory)) subs.set(p.subcategory, 0);
       subs.set(p.subcategory, subs.get(p.subcategory)+1);
     });
     return Array.from(subs.entries()).map(([id,count]) => ({id, count}));
-  }, [filterCategory, products, typeIndex]);
+  }, [filterCategory, products, typeIndex, details]);
 
   const clearFilters = () => { setSearch(''); setFilterCategory(''); setFilterSubcategory(''); setOnlyKits(false); setDynamicFilterValues({}); };
 
@@ -2194,8 +2280,14 @@ function CatalogPage() {
         )}
         {(filterCategory === 'axle-types' || filterCategory === 'brake-types') && filterSubcategory && (() => {
           const d = filterCategory === 'axle-types' ? axleDrawings(filterSubcategory, typeIndex) : brakeDrawings(filterSubcategory, typeIndex);
-          return <TypeDrawings images={d.images} title={d.title}/>;
+          const sc = subcats.find(x => x.id === filterSubcategory);
+          return <>
+            <TypeDrawings images={d.images} title={d.title}/>
+            {sc && sc.empty && <div className="eshop-note">Pro tento typ zatím nemáme díly v e-shopu. Pošlete nám číslo ze štítku nápravy – díly dohledáme a připravíme nabídku: <a href={'mailto:' + COMPANY.email}>{COMPANY.email}</a>, tel. {COMPANY.phone}.</div>}
+          </>;
         })()}
+
+        {filterCategory && filterCategory !== 'axle-types' && filterCategory !== 'brake-types' && <CategoryContent slug={filterCategory}/>}
 
         <div className="products-header">
           <span className="products-count">
@@ -2236,9 +2328,17 @@ function CatalogPage() {
 
 /* ===================== DETAIL PAGE ===================== */
 function DetailPage() {
-  const { selectedProduct: p, setPage, setFilterCategory, addToCart, toggleFavorite, favorites, showToast } = useApp();
+  const { selectedProduct: p, setPage, setFilterCategory, addToCart, toggleFavorite, favorites, showToast, details } = useApp();
   const [qty, setQty] = useState(1);
+  const [imgIdx, setImgIdx] = useState(0);
+  useEffect(() => { setImgIdx(0); }, [p && p.id]);
   if(!p) { setPage('catalog'); return null; }
+  const dnum = productDnum(p);
+  const det = (details && dnum && details.products[dnum]) || null;
+  const gallery = det && det.g && det.g.length > 1 ? det.g : (p.image ? [p.image] : []);
+  const mainImg = gallery[imgIdx] || p.image;
+  const descHtml = det && det.d ? details.desc[det.d] : '';
+  const params = (det && det.p) || [];
   const isFav = favorites.includes(p.id);
   const handleAdd = () => { addToCart(p, qty); showToast(`${qty}× přidáno do košíku`); };
   const handleFav = () => { toggleFavorite(p.id); showToast(isFav ? 'Odebráno z oblíbených' : 'Přidáno do oblíbených'); };
@@ -2252,8 +2352,13 @@ function DetailPage() {
         <span>{p.name}</span>
       </div>
       <div className="detail-grid">
-        <div className="detail-image-box">
-          {p.image ? <img src={p.image} alt={p.name} style={{maxWidth:'100%',maxHeight:400,objectFit:'contain'}} onError={e=>{e.target.style.display='none'}}/> : <div className="no-img" style={{fontSize:80,opacity:0.15}}>📦</div>}
+        <div>
+          <div className="detail-image-box">
+            {mainImg ? <img src={mainImg} alt={p.name} style={{maxWidth:'100%',maxHeight:400,objectFit:'contain'}} onError={e=>{e.target.style.display='none'}}/> : <div className="no-img" style={{fontSize:80,opacity:0.15}}>📦</div>}
+          </div>
+          {gallery.length > 1 && <div className="detail-gallery">
+            {gallery.map((g, i) => <button key={g} className={i === imgIdx ? 'active' : ''} onClick={() => setImgIdx(i)} title={'Fotka ' + (i + 1)}><img src={g} alt="" loading="lazy"/></button>)}
+          </div>}
         </div>
         <div className="detail-info">
           <h1>{p.name}</h1>
@@ -2288,8 +2393,84 @@ function DetailPage() {
               🛒 Zobrazit na e-shopu FIMAS
             </a>
           )}
+          {params.length > 0 && (
+            <table className="detail-params">
+              <tbody>{params.map(([k, v], i) => <tr key={i}><th>{k}</th><td>{v}</td></tr>)}</tbody>
+            </table>
+          )}
         </div>
       </div>
+      {descHtml && (
+        <div className="detail-desc">
+          <h3>Kompletní specifikace</h3>
+          <EshopHtml html={descHtml}/>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+/* Podsekce obchod.fimas.cz (např. klíč brzdy › tvar vačky › DX) jako filtry v katalogu */
+const eshopParentsOf = (slug, details) => Object.keys((details && details.facets) || {}).filter(n => resolveCategory(n, '') === slug)
+  .concat(Object.keys((details && details.cat) || {}).filter(n => resolveCategory(n, '') === slug));
+function eshopFacetFilters(slug, products, details, existing) {
+  if(!details || !details.facets) return [];
+  const catProducts = products.filter(p => inCat(p, slug));
+  const norm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z]/g, '');
+  const have = new Set((existing || []).map(f => norm(f.label)));
+  const SAME = { probubeno: 'rozmerbrzdy', vnitrnisirka: 'sirka' };
+  const out = [];
+  [...new Set(eshopParentsOf(slug, details))].forEach(parent => {
+    Object.entries(details.facets[parent] || {}).forEach(([group, values]) => {
+      const key = norm(group);
+      if(have.has(key) || have.has(SAME[key])) return;
+      const opts = Object.entries(values).map(([v, dns]) => {
+        const set = new Set(dns);
+        return { value: v, label: v, count: catProducts.filter(p => set.has(productDnum(p))).length, set };
+      }).filter(o => o.count > 0)
+        .sort((a, b) => (parseFloat(a.value.replace(',', '.')) || 0) - (parseFloat(b.value.replace(',', '.')) || 0) || a.value.localeCompare(b.value, 'cs', {numeric:true}));
+      if(opts.length < 2 && group !== 'Podskupina') return;
+      if(!opts.length) return;
+      have.add(key);
+      const label = group === 'Podskupina' ? 'Podskupina' : group.charAt(0).toUpperCase() + group.slice(1);
+      out.push({ id: 'eshop:' + parent + ':' + group, label, options: opts.map(({ value, label, count }) => ({ value, label, count })),
+        match: (p, val) => { const o = opts.find(x => x.value === val); return !!o && o.set.has(productDnum(p)); } });
+    });
+  });
+  return out;
+}
+
+/* HTML z obchod.fimas.cz (už očištěné při stažení – bez skriptů a událostí) */
+function EshopHtml({ html, className }) {
+  if(!html) return null;
+  return <div className={'eshop-html ' + (className || '')} dangerouslySetInnerHTML={{ __html: html }}/>;
+}
+function CategoryContent({ slug }) {
+  const { details } = useApp();
+  const [open, setOpen] = useState(false);
+  const [kat, setKat] = useState(null);
+  const [katOpen, setKatOpen] = useState('');
+  useEffect(() => { setOpen(false); setKatOpen(''); }, [slug]);
+  if(!details) return null;
+  const parents = [...new Set(Object.keys(details.cat || {}).filter(n => resolveCategory(n, '') === slug))];
+  const katParents = (details.katalog || []).filter(n => resolveCategory(n, '') === slug);
+  if(!parents.length && !katParents.length) return null;
+  const html = parents.map(n => details.cat[n]).join('<hr>');
+  const hasTable = html.includes('<table');
+  const loadKat = (n) => {
+    if(katOpen === n) { setKatOpen(''); return; }
+    setKatOpen(n);
+    if(!kat) fetch(KATALOG_URL).then(r => r.json()).then(j => setKat(j.katalog || {})).catch(() => setKat({}));
+  };
+  return (
+    <div className="cat-content">
+      <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+        {html && <button className="cat-content-btn" onClick={() => setOpen(o => !o)}>{open ? '▾' : '▸'} {hasTable ? 'Přehled rozměrů a kódů' : 'Výkres / informace ke kategorii'}</button>}
+        {katParents.map(n => <button key={n} className="cat-content-btn" onClick={() => loadKat(n)}>{katOpen === n ? '▾' : '▸'} Katalogová tabulka</button>)}
+      </div>
+      {open && <EshopHtml html={html} className="cat-html"/>}
+      {katOpen && (kat ? (kat[katOpen] ? <EshopHtml html={kat[katOpen]} className="cat-html"/> : <p style={{fontSize:13}}>Katalog se nepodařilo načíst.</p>) : <p style={{fontSize:13}}>Načítám katalog…</p>)}
     </div>
   );
 }
@@ -4672,6 +4853,12 @@ function App() {
   // Load products: merge EMBEDDED_PRODUCTS with data.json from scraper
   const [lastUpdated, setLastUpdated] = useState(null);
   const [typeIndex, setTypeIndex] = useState(() => (TYPE_INDEX = fallbackTypeIndex()));
+  const [details, setDetails] = useState(null);
+  useEffect(() => {
+    fetch(DETAILS_URL, { cache: 'no-cache' }).then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(j => { DETAILS = j; setDetails(j); })
+      .catch(e => console.warn('[ADR E-shop] adr-details.json nenačteno', e));
+  }, []);
   // Skrytý vstup do adminu: adrparts.cz/#admin (tlačítko v menu vidí jen přihlášený admin)
   useEffect(() => {
     const h = () => { if(location.hash === '#admin') { setPage('admin'); history.replaceState(null, '', location.pathname + location.search); } };
@@ -4715,7 +4902,7 @@ function App() {
     filterCategory, setFilterCategory, filterSubcategory, setFilterSubcategory,
     selectedProduct, setSelectedProduct, cart, setCart, user, setUser,
     addToCart, updateCartQty, removeFromCart, toggleFavorite, favorites, showToast,
-    lastUpdated, refreshProducts, typeIndex
+    lastUpdated, refreshProducts, typeIndex, details
   };
 
   const renderPage = () => {

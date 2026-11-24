@@ -15,9 +15,10 @@ const num = (v) => { const s = String(v || '').replace(/&nbsp;|\s|CZK|Kč/g, '')
 
 (async () => {
   const crawl = JSON.parse(fs.readFileSync(path.join(HOME, 'adr_crawl.json'), 'utf8'));
-  const html = await (await fetch(SITE + '/?audit=' + Date.now())).text();
+  const html = SITE.startsWith('/') ? fs.readFileSync(SITE, 'utf8') : await (await fetch(SITE + '/?audit=' + Date.now())).text();
   const dataJson = await (await fetch('https://storage.googleapis.com/adr-fimas-katalog/data.json?t=' + Date.now())).json();
   const code = [
+    (html.includes('const isPlaceholderImg') ? slice(html, 'const inCat', '\n/* Map data.json') : ''),
     slice(html, 'const DATA_CAT_MAP', 'const ORDER_EMAIL'),
     slice(html, 'const CATEGORIES = [', 'const NAV_ITEMS'),
     slice(html, 'const EMBEDDED_PRODUCTS = [', '\n];') + '\n];',
@@ -72,7 +73,8 @@ const num = (v) => { const s = String(v || '').replace(/&nbsp;|\s|CZK|Kč/g, '')
     const normal = cl.filter(c => !isType(c) && (c.crumbs || []).length >= 2 && !/^TYP |JAK URČIT|KATALOG/i.test(leafName(c)));
     if (!normal.length) return;
     const exp = [...new Set(normal.map(c => L.resolveCategory(leafName(c), p.name)))];
-    if (!exp.includes(p.categorySlug)) wrong.push({ dn, name: p.name, now: catName(p.categorySlug), expected: exp.map(catName), from: normal.map(leafName) });
+    const all = [p.categorySlug].concat(p.extraSlugs || []);
+    if (!exp.some(e => all.includes(e))) wrong.push({ dn, name: p.name, now: catName(p.categorySlug), expected: exp.map(catName), from: normal.map(leafName) });
   });
   R.wrongCategory = wrong;
   say('produktů v jiné kategorii, než odpovídá obchod.fimas.cz:', wrong.length);
@@ -88,7 +90,7 @@ const num = (v) => { const s = String(v || '').replace(/&nbsp;|\s|CZK|Kč/g, '')
     const own = new Set((c.items || []).map(i => i.dn));
     cats.forEach(x => { if ((x.crumbs || []).length > 2 && x.crumbs[1] === nm) (x.items || []).forEach(i => own.add(i.dn)); });
     const slug = L.resolveCategory(nm, '');
-    const inNew = [...own].filter(dn => byDn.has(dn)).length;
+    const inNew = [...own].filter(dn => { const p = byDn.get(dn); return p && (p.categorySlug === slug || (p.extraSlugs || []).includes(slug) || /^TYP |JAK|KATALOG/.test(nm)); }).length;
     cntRows.push([nm, own.size, inNew, catName(slug)]);
   });
   cntRows.forEach(r => say(' -', r[0] + ':', r[1], '→', r[2], '(' + r[3] + ')', r[1] !== r[2] ? '  << ROZDÍL' : ''));
