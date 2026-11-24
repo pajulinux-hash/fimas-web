@@ -2398,7 +2398,7 @@ function DetailPage() {
           )}
           {params.length > 0 && (
             <table className="detail-params">
-              <tbody>{params.map(([k, v], i) => <tr key={i}><th>{k}</th><td>{v}</td></tr>)}</tbody>
+              <tbody>{params.map(([k, v], i) => <tr key={i}><th>{k}</th><td>{String(v).replace(/\s*\.:.*?:\.\s*$/, '').trim() || v}</td></tr>)}</tbody>
             </table>
           )}
         </div>
