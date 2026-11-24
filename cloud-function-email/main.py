@@ -5,6 +5,8 @@ Odesílá HTML e-maily:
   - type 'withdrawal' → odstoupení od smlouvy na ORDER_EMAIL + kopie zákazníkovi
   - type 'offer'      → nabídka zákazníkovi (+ kopie na ORDER_EMAIL), PDF v příloze;
                         smí odeslat jen přihlášený admin (Firebase ID token v Authorization)
+  - GET ?img=URL      → fotka produktu z obchod.fimas.cz s hlavičkou CORS
+                        (e-shop ji neposílá, bez ní nejde fotka vložit do PDF nabídky)
 
 Odesílatel všech e-mailů = SMTP_USER (adr.parts.cz@gmail.com).
 Odpovědi zákazníků jdou na REPLY_TO (info@fimas.cz).
@@ -34,6 +36,27 @@ EMAIL_RE = re.compile(r'^[^@\s<>,;]+@[^@\s<>,;]+\.[^@\s<>,;]+$')
 PROJECT_ID = 'adr-fimas'
 ADMIN_EMAILS = {'pajulinux@gmail.com'}  # stejný seznam jako ADMIN_EMAILS v index.html a firestore.rules
 MAX_ATTACHMENT = 8 * 1024 * 1024
+IMG_RE = re.compile(r'^https://obchod\.fimas\.cz/[^\s?#]+\.(jpe?g|png|gif|webp)$', re.I)
+MAX_IMG = 4 * 1024 * 1024
+
+
+def _image_proxy(url):
+    """Vrátí fotku z obchod.fimas.cz (jen tato doména, jen obrázky, bez přesměrování)."""
+    cors = {'Access-Control-Allow-Origin': '*'}
+    if not IMG_RE.match(url or ''):
+        return ('Nepovolená adresa obrázku', 400, cors)
+    import requests
+    try:
+        r = requests.get(url, timeout=10, allow_redirects=False, stream=True)
+        ctype = r.headers.get('Content-Type', '').split(';')[0].strip().lower()
+        if r.status_code != 200 or not ctype.startswith('image/'):
+            return ('Obrázek nenalezen', 404, cors)
+        body = r.raw.read(MAX_IMG + 1, decode_content=True)
+        if len(body) > MAX_IMG:
+            return ('Obrázek je příliš velký', 413, cors)
+    except Exception:
+        return ('Obrázek se nepodařilo stáhnout', 502, cors)
+    return (body, 200, {**cors, 'Content-Type': ctype, 'Cache-Control': 'public, max-age=86400'})
 
 
 def _admin_from_token(request):
@@ -56,7 +79,7 @@ def _admin_from_token(request):
 def _cors():
     return {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         'Access-Control-Max-Age': '3600',
     }
@@ -69,6 +92,9 @@ def send_order_email(request):
         return ('', 204, _cors())
 
     headers = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
+
+    if request.method == 'GET' and request.args.get('img'):
+        return _image_proxy(request.args.get('img'))
 
     if request.method != 'POST':
         return (json.dumps({'error': 'Only POST allowed'}), 405, headers)

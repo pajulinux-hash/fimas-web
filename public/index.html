@@ -357,6 +357,9 @@
     .offer-sugg { max-height:340px; overflow-y:auto; border:1px solid var(--border); border-radius:10px; padding:4px 10px; }
     .offer-prow { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border); }
     .offer-prow:last-child { border-bottom:none; }
+    .offer-thumb { width:48px; min-width:48px; }
+    .offer-thumb img { width:44px; min-width:44px; height:44px; object-fit:contain; border:1px solid var(--border); border-radius:6px; background:#fff; display:block; }
+    div.offer-thumb { flex:0 0 44px; height:44px; }
     .offer-actions { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 24px; }
     .offer-actions .auth-btn { width:auto; margin:0; padding:10px 22px; }
     @media (max-width:600px) {
@@ -3597,14 +3600,42 @@ function axlePartsFor(input, products) {
   };
 }
 
+/* Fotky produktů v nabídce: tisk a e-mail berou fotku přímo z obchod.fimas.cz,
+   PDF ji potřebuje jako data URI → stáhne se přes adr-email-sender (?img=), protože e-shop neposílá CORS. */
+const offerImgOk = (u) => /^https:\/\/obchod\.fimas\.cz\/\S+\.(jpe?g|png|gif|webp)$/i.test(String(u || ''));
+async function offerImagesAsData(items) {
+  const urls = [...new Set((items || []).map(i => i.image).filter(offerImgOk))];
+  const out = {};
+  const one = async (u) => {
+    try {
+      const r = await fetch(EMAIL_FUNCTION_URL + '?img=' + encodeURIComponent(u));
+      if(!r.ok) return;
+      const blobUrl = URL.createObjectURL(await r.blob());
+      try {
+        const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = blobUrl; });
+        const k = Math.min(1, 200 / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+        const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+        const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+        out[u] = c.toDataURL('image/jpeg', 0.85);
+      } finally { URL.revokeObjectURL(blobUrl); }
+    } catch(e) { console.warn('[ADR E-shop] fotka do PDF se nenačetla', u); }
+  };
+  for(let i = 0; i < urls.length; i += 6) await Promise.all(urls.slice(i, i + 6).map(one));
+  return out;
+}
+
 function buildOfferHTML(o, opts) {
   opts = opts || {};
+  // opts.images: 'direct' = URL z e-shopu (tisk, e-mail), objekt {url: dataURI} = PDF, nic = bez fotek
+  const imgSrc = (u) => !offerImgOk(u) ? '' : opts.images === 'direct' ? u : (opts.images && opts.images[u]) || '';
+  const withImg = !!opts.images && (o.items || []).some(i => offerImgOk(i.image));
   const c = o.customer || {};
   const t = offerTotals(o.items);
   const td = 'padding:7px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top';
   const th = 'padding:8px;border-bottom:2px solid #1e293b;text-align:left;font-size:12px;background:#f1f5f9';
   const rows = (o.items || []).map((i, n) => `<tr>
     <td style="${td};color:#64748b">${n + 1}</td>
+    ${withImg ? `<td style="${td};width:60px;padding-right:4px">${imgSrc(i.image) ? `<img src="${offEsc(imgSrc(i.image))}" alt="" width="52" height="52" style="width:52px;height:52px;object-fit:contain;border:1px solid #e2e8f0;border-radius:6px;background:#fff;display:block">` : ''}</td>` : ''}
     <td style="${td};font-family:monospace;font-size:12px">${offEsc(i.code)}</td>
     <td style="${td}"><strong>${offEsc(i.name)}</strong>${i.subtitle ? `<br><span style="font-size:11px;color:#64748b">${offEsc(i.subtitle)}</span>` : ''}</td>
     <td style="${td};text-align:right;white-space:nowrap">${fmt(Number(i.qty) || 0)} ks</td>
@@ -3640,7 +3671,7 @@ function buildOfferHTML(o, opts) {
     </div>` : ''}
   </div>
   <table style="width:100%;border-collapse:collapse;font-size:13px">
-    <thead><tr><th style="${th}">#</th><th style="${th}">Kód</th><th style="${th}">Název</th><th style="${th};text-align:right">Množství</th><th style="${th};text-align:right">Cena/ks bez DPH</th><th style="${th};text-align:right">Cena/ks s DPH</th><th style="${th};text-align:right">Celkem bez DPH</th></tr></thead>
+    <thead><tr><th style="${th}">#</th>${withImg ? `<th style="${th}">Foto</th>` : ''}<th style="${th}">Kód</th><th style="${th}">Název</th><th style="${th};text-align:right">Množství</th><th style="${th};text-align:right">Cena/ks bez DPH</th><th style="${th};text-align:right">Cena/ks s DPH</th><th style="${th};text-align:right">Celkem bez DPH</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>
   <table style="margin:12px 0 0 auto;border-collapse:collapse;font-size:14px;min-width:300px">
@@ -3664,7 +3695,8 @@ async function htmlToPdf(html) {
   document.body.appendChild(iframe);
   try {
     iframe.contentDocument.open(); iframe.contentDocument.write(html.replace(/<script[\s\S]*?<\/script>/gi, '')); iframe.contentDocument.close();
-    await new Promise(r => setTimeout(r, 500));
+    await Promise.all([...iframe.contentDocument.images].map(im => im.complete ? null : new Promise(r => { im.onload = im.onerror = r; setTimeout(r, 8000); })));
+    await new Promise(r => setTimeout(r, 300));
     const canvas = await html2canvas(iframe.contentDocument.body, { scale: 2, useCORS: true, allowTaint: false, width: 900, windowWidth: 900, backgroundColor: '#ffffff' });
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
@@ -3818,11 +3850,11 @@ function OfferEditor({ initial, existingIds, users, onClose }) {
   const print = () => {
     const w = window.open('', '_blank');
     if(!w) { setMsg({ err: true, text: 'Prohlížeč zablokoval nové okno – povolte vyskakovací okna pro tento web.' }); return; }
-    w.document.write(buildOfferHTML(offerForPrint(), { logo: true, print: true })); w.document.close();
+    w.document.write(buildOfferHTML(offerForPrint(), { logo: true, print: true, images: 'direct' })); w.document.close();
   };
   const pdf = async () => {
     setBusy('pdf');
-    try { const doc = await htmlToPdf(buildOfferHTML(offerForPrint(), { logo: true })); doc.save('Nabidka-' + o.number + '.pdf'); }
+    try { const of = offerForPrint(); const doc = await htmlToPdf(buildOfferHTML(of, { logo: true, images: await offerImagesAsData(of.items) })); doc.save('Nabidka-' + o.number + '.pdf'); }
     catch(e) { setMsg({ err: true, text: 'Export PDF se nepodařil: ' + (e.message || e) + ' Použijte Tisk → Uložit jako PDF.' }); }
     setBusy('');
   };
@@ -3837,7 +3869,7 @@ function OfferEditor({ initial, existingIds, users, onClose }) {
       if(!cu) throw new Error('Nejste přihlášen.');
       const token = await cu.getIdToken();
       const of = offerForPrint();
-      const html = buildOfferHTML(of, {});
+      const html = buildOfferHTML(of, { images: 'direct' });
       const greet = o.customer.name ? 'Dobrý den, ' + offEsc(o.customer.name) + ',' : 'Dobrý den,';
       const intro = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:800px;margin:0 auto 12px;padding:16px 20px;font-size:14px;line-height:1.55;color:#111">
 <p style="margin:0 0 8px">${greet}</p>
@@ -3845,7 +3877,7 @@ function OfferEditor({ initial, existingIds, users, onClose }) {
 <p style="margin:0">Na tento e-mail můžete jednoduše odpovědět – odpověď dorazí na <a href="mailto:${COMPANY.email}">${COMPANY.email}</a>.</p></div>`;
       const customerHtml = html.replace(/<body([^>]*)>/i, (m) => m + intro);
       let attachments = [];
-      try { const doc = await htmlToPdf(buildOfferHTML(of, { logo: true })); attachments = [{ filename: 'Nabidka-' + o.number + '.pdf', contentBase64: doc.output('datauristring').split(',')[1] }]; }
+      try { const doc = await htmlToPdf(buildOfferHTML(of, { logo: true, images: await offerImagesAsData(of.items) })); attachments = [{ filename: 'Nabidka-' + o.number + '.pdf', contentBase64: doc.output('datauristring').split(',')[1] }]; }
       catch(e) { console.warn('[ADR E-shop] PDF příloha se nevytvořila', e); }
       const resp = await fetch(EMAIL_FUNCTION_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
         body: JSON.stringify({ type: 'offer', orderNumber: o.number, subject: 'Cenová nabídka ' + o.number + ' – ' + COMPANY.name, html, customerHtml, customerEmail: to, customerName: o.customer.name || '', attachments }) });
@@ -3952,12 +3984,13 @@ function OfferEditor({ initial, existingIds, users, onClose }) {
         </div>}
         <div className="table-scroll" style={{marginTop:12}}>
           <table className="offer-table offer-items">
-            <thead><tr><th>#</th><th>Kód</th><th>Název</th><th style={{textAlign:'right'}}>Ks</th><th style={{textAlign:'right'}}>Cena/ks bez DPH</th><th style={{textAlign:'right'}}>Celkem bez DPH</th><th style={{textAlign:'right'}}>Celkem s DPH</th><th></th></tr></thead>
+            <thead><tr><th>#</th><th>Foto</th><th>Kód</th><th>Název</th><th style={{textAlign:'right'}}>Ks</th><th style={{textAlign:'right'}}>Cena/ks bez DPH</th><th style={{textAlign:'right'}}>Celkem bez DPH</th><th style={{textAlign:'right'}}>Celkem s DPH</th><th></th></tr></thead>
             <tbody>
-              {o.items.length === 0 && <tr><td colSpan={8} style={{color:'var(--text-muted)',textAlign:'center',padding:16}}>Zatím žádné položky – vyhledejte díl, použijte „Navrhnout díly“ nebo přidejte vlastní položku.</td></tr>}
+              {o.items.length === 0 && <tr><td colSpan={9} style={{color:'var(--text-muted)',textAlign:'center',padding:16}}>Zatím žádné položky – vyhledejte díl, použijte „Navrhnout díly“ nebo přidejte vlastní položku.</td></tr>}
               {o.items.map((i, n) => (
                 <tr key={i.id + '-' + n}>
                   <td>{n + 1}</td>
+                  <td className="offer-thumb">{offerImgOk(i.image) ? <img src={i.image} alt="" loading="lazy" onError={e => { e.target.style.visibility = 'hidden'; }}/> : null}</td>
                   <td>{i.custom ? <input className="offer-in sm" style={{width:90}} value={i.code} onChange={e => updItem(n, { code: e.target.value })}/> : <span style={{fontFamily:'monospace',fontSize:12}}>{i.code}</span>}</td>
                   <td style={{minWidth:200}}>{i.custom ? <input className="offer-in sm" style={{width:'100%'}} placeholder="Název položky" value={i.name} onChange={e => updItem(n, { name: e.target.value })}/> : <><strong>{i.name}</strong>{i.subtitle && <div style={{fontSize:11,color:'var(--text-muted)'}}>{i.subtitle}</div>}</>}
                     {!i.custom && i.eshopPrice > 0 && Math.round(i.eshopPrice) !== Math.round(Number(i.price) || 0) && <div style={{fontSize:11,color:'var(--orange)'}}>cena v e-shopu {fmtPrice(Math.round(i.eshopPrice))}</div>}</td>
@@ -4002,6 +4035,7 @@ function OfferEditor({ initial, existingIds, users, onClose }) {
 function OfferProductRow({ p, inOffer, onAdd }) {
   return (
     <div className="offer-prow">
+      <div className="offer-thumb">{offerImgOk(p.image) ? <img src={p.image} alt="" loading="lazy" onError={e => { e.target.style.visibility = 'hidden'; }}/> : null}</div>
       <div style={{minWidth:0,flex:1}}>
         <div style={{fontWeight:600,fontSize:13}}>{p.name}</div>
         <div style={{fontSize:11,color:'var(--text-muted)'}}>{[p.code, p.subtitle].filter(Boolean).join(' · ')}{(p.code || p.subtitle) ? ' · ' : ''}<span style={{color: p.stock !== false ? 'var(--green)' : 'var(--orange)'}}>{p.stock !== false ? 'skladem' : 'na objednávku'}</span></div>
