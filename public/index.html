@@ -380,6 +380,7 @@
     .td-thumb { padding:0; border:1px solid var(--border); border-radius:10px; background:#fff; cursor:zoom-in; overflow:hidden; height:230px; display:flex; align-items:flex-start; justify-content:center; transition:box-shadow .15s, border-color .15s; }
     .td-thumb:hover { border-color:var(--gold); box-shadow:0 4px 14px rgba(0,0,0,.12); }
     .td-thumb img { width:100%; height:100%; object-fit:cover; object-position:top center; display:block; }
+    .type-btn-thumb { display:block; width:100%; height:64px; object-fit:cover; object-position:top center; margin-top:6px; border-radius:6px; background:#fff; border:1px solid var(--border); pointer-events:none; }
     .td-lightbox { position:fixed; inset:0; z-index:10000; background:rgba(15,23,42,.92); display:flex; flex-direction:column; }
     .td-bar { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px 14px; color:#fff; font-size:14px; font-weight:600; }
     .td-bar button, .td-bar a { background:rgba(255,255,255,.12); color:#fff; border:1px solid rgba(255,255,255,.25); border-radius:8px; min-width:40px; height:36px; font-size:18px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; text-decoration:none; padding:0 10px; }
@@ -888,6 +889,25 @@ function parseTypeCategory(cat) {
    Klíč = typový kód podskupiny (náprava: 1H, 4T…, brzda: VC, KB, YA…); u brzd se bere první kód podskupiny, který má obrázek. */
 const TYPE_IMAGES = {"axle":{"1P":["typy/naprava-1P.webp"],"1R":["typy/naprava-1R.webp"],"1T":["typy/naprava-1T.webp"],"1V":["typy/naprava-1V.webp"],"1Y":["typy/naprava-1Y.webp"],"1H":["typy/naprava-1H.webp"],"3T":["typy/naprava-3T.webp"],"4H":["typy/naprava-4H.webp"],"4P":["typy/naprava-4P.webp"],"4R":["typy/naprava-4R.webp"],"4T":["typy/naprava-4T.webp"],"4V":["typy/naprava-4V.webp"],"4Y":["typy/naprava-4Y.webp"],"5T":["typy/naprava-5T.webp"],"5V":["typy/naprava-5V.webp"],"5Y":["typy/naprava-5Y.webp"],"6T":["typy/naprava-6T.webp"],"BA":["typy/naprava-BA.webp"],"DA":["typy/naprava-DA.webp"],"IA":["typy/naprava-IA.webp"]},"brake":{"CA":["typy/brzda-CA.webp"],"DF":["typy/brzda-DF.webp"],"FC":["typy/brzda-FC.webp"],"FF":["typy/brzda-FF.webp"],"IX":["typy/brzda-IX.webp"],"VA":["typy/brzda-VA-1.webp","typy/brzda-VA-2.webp"],"VC":["typy/brzda-VC-1.webp","typy/brzda-VC-2.webp"],"WA":["typy/brzda-WA-1.webp","typy/brzda-WA-2.webp"],"WC":["typy/brzda-WC-1.webp","typy/brzda-WC-2.webp"],"BA":["typy/brzda-BA.webp"],"DA":["typy/brzda-DA.webp"],"FS":["typy/brzda-FS.webp"],"IA":["typy/brzda-IA.webp"],"IM":["typy/brzda-IM.webp"],"IR":["typy/brzda-IR.webp"],"IT":["typy/brzda-IT.webp"],"JA":["typy/brzda-JA.webp"],"JB":["typy/brzda-JB-1.webp","typy/brzda-JB-2.webp"],"JF":["typy/brzda-JF-1.webp","typy/brzda-JF-2.webp"],"KA":["typy/brzda-KA.webp"],"KB":["typy/brzda-KB-1.webp","typy/brzda-KB-2.webp"],"KF":["typy/brzda-KF-1.webp","typy/brzda-KF-2.webp"],"MC":["typy/brzda-MC-1.webp","typy/brzda-MC-2.webp"],"MM":["typy/brzda-MM-1.webp","typy/brzda-MM-2.webp"],"NA":["typy/brzda-NA.webp"],"NF":["typy/brzda-NF.webp"],"PA":["typy/brzda-PA-1.webp","typy/brzda-PA-2.webp"],"PG":["typy/brzda-PG-1.webp","typy/brzda-PG-2.webp"],"QA":["typy/brzda-QA.webp"],"QC":["typy/brzda-QC.webp"],"QR":["typy/brzda-QR.webp"],"RE":["typy/brzda-RE-1.webp","typy/brzda-RE-2.webp"],"TA":["typy/brzda-TA.webp"],"TC":["typy/brzda-TC.webp"],"TE":["typy/brzda-TE-1.webp","typy/brzda-TE-2.webp"],"TG":["typy/brzda-TG.webp"],"TR":["typy/brzda-TR-1.webp","typy/brzda-TR-2.webp"],"VD":["typy/brzda-VD.webp"],"VE":["typy/brzda-VE.webp"],"VG":["typy/brzda-VG-1.webp","typy/brzda-VG-2.webp"],"VU":["typy/brzda-VU-1.webp","typy/brzda-VU-2.webp"],"XU":["typy/brzda-XU-1.webp","typy/brzda-XU-2.webp"],"YA":["typy/brzda-YA-1.webp","typy/brzda-YA-2.webp","typy/brzda-YA-3.webp","typy/brzda-YA-4.webp"],"YC":["typy/brzda-YC-1.webp","typy/brzda-YC-2.webp"],"ZE":["typy/brzda-ZE-1.webp","typy/brzda-ZE-2.webp"]}};
 const typeImagesFor = (kind, codes) => { const m = TYPE_IMAGES[kind] || {}; for(const c of (codes || [])) if(m[c]) return m[c]; return []; };
+/* Rozkres k podskupině TYP BRZDY (podle labelu podskupiny) */
+function brakeDrawings(label, idx) {
+  const b = ((idx || TYPE_INDEX).brakes || []).find(x => x.label === label);
+  const codes = b ? b.codes : [];
+  return { images: typeImagesFor('brake', codes), title: 'Rozkres – brzda ' + codes.join(', ') };
+}
+/* Rozkres k podskupině TYP NÁPRAVY: vlastní rozkres nápravy; když chybí, rozkres brzdy, která k nápravě patří
+   (podskupina brzdy s nápravou v seznamu, např. XA~RW,VF,XL → RW; nebo brzda se stejným typovým kódem, např. NA → 350x60 35G NA) */
+function axleDrawings(code, idx) {
+  const own = typeImagesFor('axle', [code]);
+  if(own.length) return { images: own, title: 'Rozkres – náprava ' + code, own: true };
+  const brakes = (idx || TYPE_INDEX).brakes || [];
+  let rel = brakes.filter(b => b.axles.includes(code));
+  if(!rel.some(b => typeImagesFor('brake', b.codes).length)) rel = brakes.filter(b => b.codes.includes(code));
+  rel = rel.filter(b => typeImagesFor('brake', b.codes).length);
+  const images = [...new Set(rel.flatMap(b => typeImagesFor('brake', b.codes)))];
+  const codes = [...new Set(rel.flatMap(b => b.codes.filter(c => typeImagesFor('brake', [c]).length)))];
+  return { images, title: 'Rozkres brzdy ' + codes.join(', ') + ' pro nápravu ' + code, own: false };
+}
 function TypeDrawings({ images, title, dark }) {
   const [open, setOpen] = useState(-1);
   useEffect(() => {
@@ -1702,7 +1722,7 @@ function AxleIdentification() {
             {[
               { key:'axle', icon:'⭕', title:'Díly nápravy ' + result.axleType, list:result.axleParts || [], other:result.axleOther || [],
                 src: result.axleLabel ? 'TYP NÁPRAVY → ' + result.axleLabel : null,
-                drawings: typeImagesFor('axle', [result.axleType]), dtitle: 'Rozkres – náprava ' + result.axleType,
+                drawings: (() => { const d = axleDrawings(result.axleType); return d.own ? d.images : []; })(), dtitle: 'Rozkres – náprava ' + result.axleType,
                 open: () => { setFilterCategory('axle-types'); setFilterSubcategory(result.axleType); setSearch(''); setPage('catalog'); window.scrollTo(0,0); } },
               { key:'brake', icon:'🛞', title:'Díly brzdy ' + (result.brakeCode || (result.brakeEntries || []).map(b => b.codes.join(', ')).join(' / ')), list:result.brakeParts || [], other:result.brakeOther || [],
                 src: (result.brakeEntries || []).length ? 'TYP BRZDY → ' + result.brakeEntries.map(b => b.label).join(' | ') : null,
@@ -2111,7 +2131,7 @@ function CatalogPage() {
                           <span style={{color:'var(--gold)'}}>{s.id}</span>
                           <span style={{color:'var(--text-muted)',fontSize:11,marginLeft:6}}>{AXLE_TYPES[s.id] ? AXLE_TYPES[s.id].join(', ') : ''}</span>
                           <span style={{color:'var(--text-muted)',fontSize:10,marginLeft:4}}>({s.count})</span>
-                          {typeImagesFor('axle', [s.id]).length > 0 && <span title="Má rozkres dílů" style={{marginLeft:4}}>📐</span>}
+                          {(() => { const d = axleDrawings(s.id, typeIndex); return d.images.length > 0 && <img className="type-btn-thumb" src={d.images[0]} alt="" loading="lazy" title={d.title}/>; })()}
                         </button>
                       ))}
                     </div>
@@ -2148,7 +2168,7 @@ function CatalogPage() {
                             <span style={{color:'var(--gold)'}}>{s.code || s.id}</span>
                             <span style={{color:'var(--text-muted)',fontSize:11,marginLeft:6}}>{model}</span>
                             <span style={{color:'var(--text-muted)',fontSize:10,marginLeft:4}}>({s.count})</span>
-                            {typeImagesFor('brake', ((typeIndex.brakes.find(b => b.label === s.id) || {}).codes) || []).length > 0 && <span title="Má rozkres dílů" style={{marginLeft:4}}>📐</span>}
+                            {(() => { const d = brakeDrawings(s.id, typeIndex); return d.images.length > 0 && <img className="type-btn-thumb" src={d.images[0]} alt="" loading="lazy" title={d.title}/>; })()}
                           </button>
                         );
                       })}
@@ -2173,10 +2193,8 @@ function CatalogPage() {
           </div>
         )}
         {(filterCategory === 'axle-types' || filterCategory === 'brake-types') && filterSubcategory && (() => {
-          const imgs = filterCategory === 'axle-types'
-            ? typeImagesFor('axle', [filterSubcategory])
-            : typeImagesFor('brake', ((typeIndex.brakes.find(b => b.label === filterSubcategory) || {}).codes) || []);
-          return <TypeDrawings images={imgs} title={'Rozkres – ' + (filterCategory === 'axle-types' ? 'náprava ' : 'brzda ') + (filterCategory === 'axle-types' ? filterSubcategory : ((typeIndex.brakes.find(b => b.label === filterSubcategory) || {}).codes || []).join(', '))}/>;
+          const d = filterCategory === 'axle-types' ? axleDrawings(filterSubcategory, typeIndex) : brakeDrawings(filterSubcategory, typeIndex);
+          return <TypeDrawings images={d.images} title={d.title}/>;
         })()}
 
         <div className="products-header">
