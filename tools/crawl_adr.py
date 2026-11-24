@@ -140,8 +140,17 @@ def text_len(h):
 # ---------- kategorie ----------
 CAT_RE = re.compile(r'href="((?:https?://obchod\.fimas\.cz)?/[^"?#]*-c23_(\d+)_(\d+)\.htm)"')
 PROD_RE = re.compile(r'href="((?:https?://obchod\.fimas\.cz)?/[^"?#]*-d(\d+)\.htm)"')
-LIST_MARKERS = ['id="centerpage_params_filter_area"', 'class="item-container', 'id="centerpage_filtering_form"',
+LIST_MARKERS = ['id="centerpage_params_filter_area"', 'class="cat-pr-chart', 'class="products_wrap', 'class="under_bookm', 'id="centerpage_filtering_form"',
                 'class="subcategory', 'class="categories-box', 'class="product-list', 'class="ws_list', '<!-- END in the center']
+
+
+def listing_end_markers(h, start):
+    ends = [h.find(k, start) for k in LIST_MARKERS]
+    t = h.find('Tabulkové zobrazení', start)
+    if t > 0:
+        ul = h.rfind('<ul', start, t)
+        ends.append(ul if ul > 0 else t)
+    return [e for e in ends if e > 0]
 
 
 def parse_category(url, h):
@@ -155,34 +164,50 @@ def parse_category(url, h):
     desc = ''
     if m:
         start = m.end()
-        ends = [h.find(k, start) for k in LIST_MARKERS]
-        ends = [e for e in ends if e > 0]
+        ends = listing_end_markers(h, start)
         end = min(ends) if ends else start
-        raw = h[start:end]
-        desc = sanitize(raw, keep_style=True)
+        desc = sanitize(h[start:end], keep_style=True)
         if text_len(desc) < 3 and '<img' not in desc and '<table' not in desc:
             desc = ''
-    # položky výpisu (jen bloky item-container, ne levé menu)
+    # skutečný výpis produktů (products_wrap → bloky productBody), ne „Nejprodávanější“ ani levé menu
     items = []
-    for blk in h.split('class="item-container')[1:]:
-        blk = blk[:6000]
-        pm = PROD_RE.search(blk)
-        if not pm:
-            continue
-        im = re.search(r'<img[^>]+src="([^"]+)"', blk)
-        st = 'y' if re.search(r'class="[^"]*stock[-_]y', blk) else ('n' if re.search(r'class="[^"]*stock[-_]n', blk) else '?')
-        tm = re.search(r'class="item-title[^"]*"[^>]*>(.*?)</', blk, re.S)
-        items.append({'dn': pm.group(2), 'url': absu(pm.group(1)), 'img': absu(im.group(1)) if im else '',
-                      'stock': st, 'title': html.unescape(re.sub(r'<[^>]+>', '', tm.group(1))).strip() if tm else ''})
-    # stránkování: odkazy na stejnou kategorii s číslem stránky v query
-    path = re.sub(r'^https?://[^/]+', '', url)
-    pages = set()
-    for href in re.findall(r'href="([^"]+)"', h):
-        hh = html.unescape(href)
-        if path in hh and '?' in hh and re.search(r'(?:^|[?&])(?:page|strana|pg|p|stranka|offset|from)=\d+', hh.split('?', 1)[1]):
-            pages.add(absu(hh))
+    pw = h.find('class="products_wrap')
+    if pw > 0:
+        area = h[pw:]
+        for blk in re.split(r'<div class="productBody', area)[1:]:
+            blk = blk[:8000]
+            pm = re.search(r'href="([^"]*-d(\d+)\.htm)"[^>]*class="product-box-link"', blk) or PROD_RE.search(blk)
+            if not pm:
+                continue
+            im = re.search(r'<img[^>]+src="([^"]+)"', blk)
+            st = 'skladem' if 'class="stock_yes"' in blk else ('není skladem' if 'class="stock_no"' in blk else '?')
+            tm = re.search(r'class="product-box-link"[^>]*>(.*?)</a>', blk, re.S)
+            sm = re.search(r'class="productSubtitle"[^>]*>(.*?)</p>', blk, re.S)
+            pr = re.search(r'class="product_price_text"[^>]*>(.*?)</span>', blk, re.S)
+            items.append({'dn': pm.group(2), 'url': absu(pm.group(1)), 'img': absu(im.group(1)) if im else '', 'stock': st,
+                          'title': html.unescape(re.sub(r'<[^>]+>', '', tm.group(1))).strip() if tm else '',
+                          'subtitle': html.unescape(re.sub(r'<[^>]+>', '', sm.group(1))).strip() if sm else '',
+                          'price': html.unescape(re.sub(r'<[^>]+>', '', pr.group(1))).replace('\xa0', ' ').strip() if pr else ''})
+    # stránkování: odkazy na stejnou kategorii (stejné c23_X_Y) s dalším parametrem / sufixem
+    cm = re.search(r'-c23_(\d+)_(\d+)\.htm', url)
+    pages, cand = set(), set()
+    if cm:
+        key = f'c23_{cm.group(1)}_{cm.group(2)}'
+        for href in re.findall(r'href="([^"]+)"', h):
+            hh = html.unescape(href)
+            if key not in hh or hh.endswith(key + '.htm'):
+                continue
+            q = hh.split('?', 1)[1] if '?' in hh else ''
+            qs = dict(x.split('=', 1) if '=' in x else (x, '') for x in q.split('&') if x)
+            rest = {k: v for k, v in qs.items() if k not in ('sort', 'display_as', 'sortdesc', 'order')}
+            if not rest and '?' in hh:
+                continue
+            cand.add(hh)
+            if any(re.fullmatch(r'\d+', v or '') for v in rest.values()) or re.search(key + r'_\d+\.htm', hh):
+                pages.add(absu(hh))
     subcats = sorted({absu(u) for u, a, b in CAT_RE.findall(h)})
-    return {'title': title, 'crumbs': crumbs, 'desc': desc, 'items': items, 'pages': sorted(pages), 'links': subcats}
+    return {'title': title, 'crumbs': crumbs, 'desc': desc, 'items': items, 'pages': sorted(pages),
+            'pageCandidates': sorted(cand)[:10], 'links': subcats}
 
 
 def crawl_categories():
