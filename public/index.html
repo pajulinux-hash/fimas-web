@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -299,7 +299,74 @@
     .back-top { position:fixed; bottom:24px; right:24px; width:44px; height:44px; border-radius:50%; background:var(--navy); color:#fff; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-lg); z-index:999; transition:var(--transition); opacity:0; pointer-events:none; }
     .back-top.visible { opacity:1; pointer-events:auto; }
     .back-top:hover { background:var(--blue); transform:translateY(-2px); }
-  </style>
+  
+    /* ===== RESPONZIVNÍ ÚPRAVY – mobil / tablet ===== */
+    html, body { -webkit-text-size-adjust:100%; }
+    img, video, iframe { max-width:100%; }
+    .table-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    @media(max-width:900px) {
+      .header-brand small { display:none; }
+    }
+    @media(max-width:600px) {
+      .hide-xs { display:none !important; }
+      .top-bar { justify-content:center; text-align:center; font-size:11px; padding:5px 10px; }
+      .header-inner { padding:8px 12px; gap:10px; }
+      .header-logo { height:40px; }
+      .header-brand { min-width:0; }
+      .header-brand h1 { font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .header-actions { gap:6px; flex-shrink:0; }
+      .hdr-btn { padding:9px 11px; font-size:14px; }
+      .nav-item { padding:11px 13px; }
+      .notice-bar { font-size:13px; padding:8px 38px 8px 12px; }
+      /* iOS nezoomuje do polí s písmem >= 16 px */
+      input, select, textarea { font-size:16px !important; }
+      .info-page, .auth-page { padding-left:12px; padding-right:12px; }
+      .info-page table { display:block; overflow-x:auto; }
+      h2 { word-break:break-word; }
+    }
+    @media(max-width:600px) {
+      .hero { padding:32px 14px; }
+      .hero-imgs { gap:8px !important; margin-top:24px !important; }
+      .hero-imgs img:first-child, .hero-imgs img:last-child { height:44px !important; border-radius:8px !important; }
+      .hero-imgs img:nth-child(2) { width:52% !important; }
+      .chat-fab { right:14px !important; bottom:76px !important; }
+      .chat-fab-btn { width:52px; height:52px; padding:0 !important; justify-content:center; border-radius:50% !important; }
+      .chat-fab-label { display:none; }
+    }
+    @media(max-width:500px) {
+      .cart-item { gap:10px 12px; padding:12px; }
+      .cart-item-info { flex:1 1 calc(100% - 80px); }
+      .cart-item .qty-row { margin-left:76px !important; }
+      .cart-item-price { margin-left:auto; }
+    }
+
+    /* ===== Nabídky (admin) ===== */
+    .offer-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:12px; }
+    .offer-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px; }
+    .offer-field { display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--text-muted); font-weight:600; }
+    .offer-in { padding:9px 11px; border:1px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; background:#fff; color:var(--text); box-sizing:border-box; min-width:0; }
+    .offer-in:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(37,99,235,.15); }
+    .offer-in:disabled { background:var(--bg); color:var(--text-mid); }
+    .offer-in.sm { padding:6px 8px; font-size:13px; }
+    .offer-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .offer-table th { text-align:left; padding:9px 10px; border-bottom:2px solid var(--border); background:var(--bg); white-space:nowrap; }
+    .offer-table td { padding:8px 10px; border-bottom:1px solid var(--border); vertical-align:top; }
+    .offer-table tbody tr:hover { background:var(--bg); }
+    .offer-items td { vertical-align:middle; }
+    .offer-badge { display:inline-block; padding:3px 10px; border-radius:999px; color:#fff; font-size:12px; font-weight:700; white-space:nowrap; }
+    .offer-sugg { max-height:340px; overflow-y:auto; border:1px solid var(--border); border-radius:10px; padding:4px 10px; }
+    .offer-prow { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border); }
+    .offer-prow:last-child { border-bottom:none; }
+    .offer-actions { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 24px; }
+    .offer-actions .auth-btn { width:auto; margin:0; padding:10px 22px; }
+    @media (max-width:600px) {
+      .offer-card { padding:12px; }
+      .offer-grid { grid-template-columns:1fr 1fr; }
+      .offer-prow { flex-wrap:wrap; }
+      .offer-actions > * { flex:1 1 calc(50% - 8px); }
+    }
+    @media (max-width:400px) { .offer-grid { grid-template-columns:1fr; } }
+</style>
 </head>
 <body>
 <div id="root"></div>
@@ -536,12 +603,12 @@ function fbErr(e) {
 const PROFILE_FIELDS = ['name','phone','company','ico','dic','street','city','zip'];
 const pickProfile = (o) => { const r = {}; PROFILE_FIELDS.forEach(k => { r[k] = String((o && o[k]) || '').trim(); }); return r; };
 /* Uložení objednávky / odstoupení do Firestore (pro admin panel); chyba nezastaví objednávku */
-async function fbSaveDoc(collection, id, data) {
+async function fbSaveDoc(collection, id, data, opts) {
   const f = getFb(); if (!f) return false;
   try {
     const u = f.auth.currentUser;
     const doc = JSON.parse(JSON.stringify(data));
-    if (u) doc.uid = u.uid; else delete doc.uid;
+    if (u && !(opts && opts.noUid)) doc.uid = u.uid; else delete doc.uid;
     doc.createdAt = f.ts();
     await f.db.collection(collection).doc(String(id)).set(doc);
     return true;
@@ -1358,7 +1425,7 @@ function Hero() {
           <div className="hero-feat"><Icon name="truck" size={16}/> Rychlé dodání</div>
           <div className="hero-feat"><Icon name="check" size={16}/> Originální díly</div>
         </div>
-        <div style={{marginTop:32,display:'flex',alignItems:'center',justifyContent:'center',gap:16}}>
+        <div className="hero-imgs" style={{marginTop:32,display:'flex',alignItems:'center',justifyContent:'center',gap:16}}>
           <img src={LOGO_ADR} alt="ADR Parts" style={{height:80,width:'auto',borderRadius:12,boxShadow:'0 4px 16px rgba(0,0,0,0.3)',flexShrink:0}} />
           <img src={AXLE_HERO_IMG} alt="ADR náprava" style={{maxWidth:360,width:'60%',height:'auto',filter:'drop-shadow(0 4px 16px rgba(212,175,55,0.3))'}} />
           <img src={LOGO_ADR_SYSTEM} alt="ADR System" style={{height:80,width:'auto',borderRadius:12,boxShadow:'0 4px 16px rgba(0,0,0,0.3)',flexShrink:0}} />
@@ -2311,9 +2378,16 @@ ${form.note ? '<div class="info-box" style="margin-bottom:24px"><h3>📝 Poznám
 }
 
 /* ===================== CHECKOUT PAGE ===================== */
+function readOfferCheckout(cart) {
+  try {
+    const pre = JSON.parse(sessionStorage.getItem(OFFER_CHECKOUT_KEY) || 'null');
+    return pre && pre.offerId && cart.some(i => i.offerNo === pre.offerId) ? pre : null;
+  } catch { return null; }
+}
 function CheckoutPage() {
   const { cart, user, setPage, setCart, showToast } = useApp();
-  const [form, setForm] = useState({
+  const [offerPre] = useState(() => readOfferCheckout(cart));
+  const [form, setForm] = useState(() => offerPre ? { ...offerPre.form, paymentMethod: 'cod' } : {
     name: user?.name || '', email: user?.email || '', phone: user?.phone || '',
     company: user?.company || '', ico: user?.ico || '', dic: user?.dic || '',
     street: user?.street || '', city: user?.city || '', zip: user?.zip || '',
@@ -2353,7 +2427,13 @@ function CheckoutPage() {
       localStorage.setItem('adr_orders', JSON.stringify(orders));
     } catch {}
     // Uložit do Firestore → admin panel a "Moje objednávky" na všech zařízeních
-    fbSaveDoc('orders', orderNum, { id: orderNum, date: orderDate, items: cart.map(i => ({ id:i.id, code:i.code||'', name:i.name, subtitle:i.subtitle||'', price:i.price, qty:i.qty, url:i.url||'', image:i.image||'' })), form, paymentMethod: form.paymentMethod, subtotal, vatTotal, total, termsAccepted: new Date().toISOString(), termsVersion: LEGAL_VERSION });
+    fbSaveDoc('orders', orderNum, { id: orderNum, date: orderDate, items: cart.map(i => ({ id:i.id, code:i.code||'', name:i.name, subtitle:i.subtitle||'', price:i.price, qty:i.qty, url:i.url||'', image:i.image||'' })), form, paymentMethod: form.paymentMethod, subtotal, vatTotal, total, termsAccepted: new Date().toISOString(), termsVersion: LEGAL_VERSION, ...(offerPre ? { offerId: offerPre.offerId } : {}) }, offerPre ? { noUid: true } : null);
+    // Objednávka z nabídky (vytváří admin za zákazníka) → nabídku označit jako objednanou
+    if (offerPre) {
+      const fb = getFb();
+      if (fb) fb.db.collection('offers').doc(offerPre.offerId).set({ status: 'ordered', orderId: orderNum, orderedAt: new Date().toISOString(), updatedAt: fb.ts() }, { merge: true }).catch(e => console.warn('[ADR E-shop] offer update failed', fbErr(e)));
+      try { sessionStorage.removeItem(OFFER_CHECKOUT_KEY); } catch {}
+    }
 
     // Open HTML order in new window — customer can print / save as PDF
     const orderWin = window.open('', '_blank');
@@ -2430,6 +2510,9 @@ function CheckoutPage() {
   return (
     <div className="checkout-page">
       <h2>📋 Objednávka</h2>
+      {offerPre && <div style={{margin:'0 0 16px',padding:'10px 14px',border:'1px solid var(--green)',borderRadius:10,background:'#f0fdf4',fontSize:14}}>
+        📄 Objednávka podle nabídky <strong>{offerPre.offerId}</strong> – údaje zákazníka jsou předvyplněné z nabídky, ceny položek odpovídají nabídce. Zkontrolujte adresu a způsob platby. Potvrzení dostane zákazník na <strong>{form.email}</strong>.
+      </div>}
 
       <div className="shipping-notice" style={{marginBottom:20}}>
         <span className="warn-icon">⚠️</span>
@@ -3442,6 +3525,493 @@ function ContactPage() {
 /* ===================== FOOTER ===================== */
 
 /* ===================== ADMIN ===================== */
+/* ===================== NABÍDKY (admin) =====================
+   Firestore "offers/{číslo}" – čte i zapisuje jen admin (firestore.rules).
+   Číslo: FIMAS + DDMMYYYY (další nabídka téhož dne -2, -3 …). Částky zaokrouhleny na celé Kč. */
+const OFFER_STATUSES = {
+  draft:    { label:'Rozpracovaná', color:'#64748b' },
+  sent:     { label:'Odeslaná',     color:'#2563eb' },
+  accepted: { label:'Odsouhlasená', color:'#16a34a' },
+  ordered:  { label:'Objednáno',    color:'#7c3aed' },
+  rejected: { label:'Zamítnutá',    color:'#dc2626' },
+};
+const OFFER_CLOSING = 'Platnost nabídky je 2-týdny nebo do vyprodání zásob. Ceny jsou platné pouze pro přesný počet kusů uvedených v nabídce a při vyzvednutí na prodejně. V případě dotazů k nabídce mne neváhejte kontaktovat. Jestliže se rozhodnete objednat nabízené zboží, uveďte prosím do Vaší objednávky číslo naší nabídky a den kdy byla nabídka utvořena.';
+const OFFER_SIGNATURE = 'Zpracoval Pavel Juráček, info@fimas.cz';
+const OFFER_VALID_DAYS = 14;
+const OFFER_CHECKOUT_KEY = 'adr_offer_checkout';
+const pad2 = (n) => String(n).padStart(2, '0');
+const isoDate = (d) => d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+const parseIso = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(); };
+const czDate = (s) => { const d = parseIso(s); return d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear(); };
+const offerBaseNumber = (s) => { const d = parseIso(s); return 'FIMAS' + pad2(d.getDate()) + pad2(d.getMonth() + 1) + d.getFullYear(); };
+function nextOfferNumber(existingIds, dateIso) {
+  const base = offerBaseNumber(dateIso), set = new Set(existingIds);
+  if(!set.has(base)) return base;
+  let i = 2; while(set.has(base + '-' + i)) i++;
+  return base + '-' + i;
+}
+const offerValidUntil = (dateIso) => { const d = parseIso(dateIso); d.setDate(d.getDate() + OFFER_VALID_DAYS); return isoDate(d); };
+const offNorm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const offEsc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const offInt = (v) => { const n = Math.round(Number(String(v).replace(',', '.'))); return isFinite(n) && n > 0 ? n : 0; };
+function offerTotals(items) {
+  const lines = (items || []).map(i => Math.round((Number(i.price) || 0) * (Number(i.qty) || 0)));
+  const subtotal = lines.reduce((s, x) => s + x, 0);
+  const vatTotal = Math.round(subtotal * COMPANY.vatRate);
+  return { lines, subtotal, vatTotal, total: subtotal + vatTotal };
+}
+const offerItemFromProduct = (p, qty) => ({ id: p.id, code: p.code || '', name: p.name || '', subtitle: p.subtitle || '', url: p.url || '', image: p.image || '', qty: qty || 1, price: Math.round(Number(p.price) || 0), eshopPrice: Number(p.price) || 0 });
+
+/* Díly k číslu nápravy – stejná logika jako „Identifikace nápravy“ (TYP NÁPRAVY + TYP BRZDY + počet otvorů z P.C.D.) */
+function axlePartsFor(input, products) {
+  const code = String(input || '').trim().toUpperCase();
+  const a = code ? findAxleCode(code) : null;
+  if(!a) return { error: 'Číslo nápravy nebylo rozpoznáno.' };
+  if(a.serialNumber || !a.code) return { error: 'Výrobní číslo (12 číslic) neobsahuje typ nápravy – zadejte typové číslo nápravy, např. A70NA6INNO36.' };
+  const idx = TYPE_INDEX, axle = a.code, brakeCode = a.brakeCode || null, holes = holesFromPcd(a.pcdFromCode || null);
+  const byDn = new Map();
+  (products || []).forEach(p => { const d = productDnum(p); if(d && !byDn.has(d)) byDn.set(d, p); });
+  const toProducts = (dnums) => { const out = [], seen = new Set(); dnums.forEach(d => { const p = byDn.get(d); if(p && !seen.has(p.id)) { seen.add(p.id); out.push(p); } }); return out; };
+  const axleEntry = idx.axles.get(axle) || null;
+  let brakeEntries = [];
+  if(brakeCode) {
+    brakeEntries = idx.brakes.filter(b => b.codes.includes(brakeCode));
+    const narrowed = brakeEntries.filter(b => b.axles.includes(axle));
+    if(narrowed.length) brakeEntries = narrowed;
+  } else {
+    brakeEntries = idx.brakes.filter(b => b.axles.includes(axle));
+    if(!brakeEntries.length) brakeEntries = idx.brakes.filter(b => b.codes.includes(axle));
+    if(!brakeEntries.length) { const dims = AXLE_TYPES[axle] || []; brakeEntries = idx.brakes.filter(b => dims.includes(b.dim)); }
+  }
+  const holeOk = (p) => { if(!holes) return true; const h = holeCount(p.name); return h === null || h === holes; };
+  const catOrder = (p) => { const i = CATEGORIES.findIndex(c => c.id === p.categorySlug); return i < 0 ? 999 : i; };
+  const sortParts = (arr) => arr.slice().sort((x, y) => (catOrder(x) - catOrder(y)) || x.name.localeCompare(y.name, 'cs'));
+  const axleAll = axleEntry ? toProducts(axleEntry.dnums) : [];
+  const brakeAll = toProducts(brakeEntries.flatMap(b => b.dnums)).filter(p => !axleAll.some(x => x.id === p.id));
+  return {
+    axle, brakeCode, holes, ready: idx.ready,
+    axleLabel: axleEntry ? axleEntry.label : null,
+    brakeLabels: brakeEntries.map(b => b.label),
+    axleParts: sortParts(axleAll.filter(holeOk)),
+    brakeParts: sortParts(brakeAll.filter(holeOk)),
+  };
+}
+
+function buildOfferHTML(o, opts) {
+  opts = opts || {};
+  const c = o.customer || {};
+  const t = offerTotals(o.items);
+  const td = 'padding:7px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top';
+  const th = 'padding:8px;border-bottom:2px solid #1e293b;text-align:left;font-size:12px;background:#f1f5f9';
+  const rows = (o.items || []).map((i, n) => `<tr>
+    <td style="${td};color:#64748b">${n + 1}</td>
+    <td style="${td};font-family:monospace;font-size:12px">${offEsc(i.code)}</td>
+    <td style="${td}"><strong>${offEsc(i.name)}</strong>${i.subtitle ? `<br><span style="font-size:11px;color:#64748b">${offEsc(i.subtitle)}</span>` : ''}</td>
+    <td style="${td};text-align:right;white-space:nowrap">${fmt(Number(i.qty) || 0)} ks</td>
+    <td style="${td};text-align:right;white-space:nowrap">${fmtPrice(Math.round(Number(i.price) || 0))}</td>
+    <td style="${td};text-align:right;white-space:nowrap">${fmtPrice(withVat(Math.round(Number(i.price) || 0)))}</td>
+    <td style="${td};text-align:right;white-space:nowrap;font-weight:700">${fmtPrice(t.lines[n])}</td>
+  </tr>`).join('');
+  const custLine = (label, v) => v ? `<tr><td style="padding:2px 12px 2px 0;color:#64748b">${label}</td><td style="padding:2px 0;font-weight:600">${offEsc(v)}</td></tr>` : '';
+  const printJs = opts.print ? '<script>window.onload=function(){setTimeout(function(){window.print()},300)}<\/script>' : '';
+  return `<!DOCTYPE html><html lang="cs"><head><meta charset="utf-8"><title>Nabídka ${offEsc(o.number)}</title>
+<style>@page{size:A4;margin:12mm} body{margin:0;background:#fff} @media print{.noprint{display:none}}</style>${printJs}</head>
+<body><div style="font-family:Arial,Helvetica,sans-serif;max-width:800px;margin:0 auto;padding:24px;color:#0f172a;font-size:13px;line-height:1.45;background:#fff">
+  <table style="width:100%;border-collapse:collapse"><tr>
+    <td style="vertical-align:top">
+      ${opts.logo ? `<img src="${LOGO_ADR}" alt="" style="height:56px;margin-bottom:6px">` : ''}
+      <div style="font-size:20px;font-weight:800">${COMPANY.name}</div>
+      <div style="color:#475569;font-size:12px">${COMPANY.address}<br>IČO: ${COMPANY.ico} · DIČ: ${COMPANY.dic}<br>Tel.: ${COMPANY.phone} · ${COMPANY.mobile}<br>${COMPANY.email} · ${COMPANY.web}</div>
+    </td>
+    <td style="vertical-align:top;text-align:right">
+      <div style="font-size:22px;font-weight:800;letter-spacing:.5px">CENOVÁ NABÍDKA</div>
+      <div style="font-size:16px;font-weight:700;margin-top:4px">č. ${offEsc(o.number)}</div>
+      <div style="margin-top:6px;font-size:12px">Datum vytvoření: <strong>${czDate(o.date)}</strong><br>Platnost do: <strong>${czDate(offerValidUntil(o.date))}</strong></div>
+    </td>
+  </tr></table>
+  <div style="display:flex;gap:16px;margin:18px 0 14px;flex-wrap:wrap">
+    <div style="flex:1;min-width:260px;border:1px solid #cbd5e1;border-radius:8px;padding:10px 14px">
+      <div style="font-size:11px;text-transform:uppercase;color:#64748b;font-weight:700;margin-bottom:4px">Odběratel</div>
+      <table style="border-collapse:collapse;font-size:13px">${custLine('Firma', c.company)}${custLine('Jméno', c.name)}${custLine('IČO', c.ico)}${custLine('DIČ', c.dic)}${custLine('Telefon', c.phone)}${custLine('E-mail', c.email)}${(c.street || c.city) ? custLine('Adresa', [c.street, [c.zip, c.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')) : ''}</table>
+    </div>
+    ${o.axle ? `<div style="min-width:200px;border:1px solid #cbd5e1;border-radius:8px;padding:10px 14px">
+      <div style="font-size:11px;text-transform:uppercase;color:#64748b;font-weight:700;margin-bottom:4px">Číslo nápravy</div>
+      <div style="font-family:monospace;font-size:16px;font-weight:700">${offEsc(o.axle)}</div>
+    </div>` : ''}
+  </div>
+  <table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr><th style="${th}">#</th><th style="${th}">Kód</th><th style="${th}">Název</th><th style="${th};text-align:right">Množství</th><th style="${th};text-align:right">Cena/ks bez DPH</th><th style="${th};text-align:right">Cena/ks s DPH</th><th style="${th};text-align:right">Celkem bez DPH</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <table style="margin:12px 0 0 auto;border-collapse:collapse;font-size:14px;min-width:300px">
+    <tr><td style="padding:3px 16px 3px 0;color:#475569">Celkem bez DPH</td><td style="padding:3px 0;text-align:right;font-weight:600">${fmtPrice(t.subtotal)}</td></tr>
+    <tr><td style="padding:3px 16px 3px 0;color:#475569">DPH ${Math.round(COMPANY.vatRate * 100)} %</td><td style="padding:3px 0;text-align:right;font-weight:600">${fmtPrice(t.vatTotal)}</td></tr>
+    <tr><td style="padding:8px 16px 3px 0;font-weight:800;font-size:16px;border-top:2px solid #0f172a">Celkem s DPH</td><td style="padding:8px 0 3px;text-align:right;font-weight:800;font-size:16px;border-top:2px solid #0f172a">${fmtPrice(t.total)}</td></tr>
+  </table>
+  <p style="margin:14px 0 0;padding:8px 12px;background:#fff7ed;border:1px solid #fdba74;border-radius:8px;color:#9a3412;font-size:12px"><strong>Poštovné a balné není v cenách nabídky zahrnuto.</strong> Při zaslání zboží vám cenu dopravy sdělíme podle hmotnosti a povahy zásilky.</p>
+  ${o.notes ? `<div style="margin-top:14px"><div style="font-size:11px;text-transform:uppercase;color:#64748b;font-weight:700;margin-bottom:4px">Poznámka</div><div style="white-space:pre-wrap">${offEsc(o.notes)}</div></div>` : ''}
+  <p style="margin:18px 0 0">${OFFER_CLOSING}</p>
+  <p style="margin:14px 0 0;font-weight:600">${OFFER_SIGNATURE}</p>
+  <div style="margin-top:22px;padding-top:8px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8">${COMPANY.name}, ${COMPANY.address} · IČO ${COMPANY.ico} · DIČ ${COMPANY.dic} · zapsaná v obchodním rejstříku, sp. zn. ${COMPANY.register} · Bankovní spojení: ${COMPANY.bank}</div>
+</div></body></html>`;
+}
+
+/* HTML → PDF (A4) přes html2canvas + jsPDF; vrací instanci jsPDF */
+async function htmlToPdf(html) {
+  if(typeof html2canvas === 'undefined' || !window.jspdf) throw new Error('Knihovna pro PDF se nenačetla.');
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:900px;height:1200px;border:none;';
+  document.body.appendChild(iframe);
+  try {
+    iframe.contentDocument.open(); iframe.contentDocument.write(html.replace(/<script[\s\S]*?<\/script>/gi, '')); iframe.contentDocument.close();
+    await new Promise(r => setTimeout(r, 500));
+    const canvas = await html2canvas(iframe.contentDocument.body, { scale: 2, useCORS: true, allowTaint: false, width: 900, windowWidth: 900, backgroundColor: '#ffffff' });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfW = pdf.internal.pageSize.getWidth(), pdfH = pdf.internal.pageSize.getHeight();
+    const imgW = pdfW - 20, pageContentH = pdfH - 20;
+    const imgH = (canvas.height * imgW) / canvas.width;
+    if(imgH <= pageContentH) {
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', 10, 10, imgW, imgH);
+    } else {
+      const sliceH = Math.floor(canvas.width * pageContentH / imgW);
+      for(let srcY = 0; srcY < canvas.height; srcY += sliceH) {
+        const h = Math.min(sliceH, canvas.height - srcY);
+        const sc = document.createElement('canvas'); sc.width = canvas.width; sc.height = h;
+        sc.getContext('2d').drawImage(canvas, 0, srcY, canvas.width, h, 0, 0, canvas.width, h);
+        if(srcY > 0) pdf.addPage();
+        pdf.addImage(sc.toDataURL('image/jpeg', 0.9), 'JPEG', 10, 10, imgW, (h * imgW) / canvas.width);
+      }
+    }
+    return pdf;
+  } finally { document.body.removeChild(iframe); }
+}
+
+const emptyOffer = (existingIds) => {
+  const date = isoDate(new Date());
+  return { _new: true, number: nextOfferNumber(existingIds, date), date, status: 'draft',
+    customer: { company:'', name:'', phone:'', email:'', ico:'', dic:'', street:'', city:'', zip:'' },
+    axle: '', notes: '', items: [] };
+};
+
+function OffersAdmin({ offers, users, error, reload }) {
+  const [editing, setEditing] = useState(null);
+  const [q, setQ] = useState('');
+  const [st, setSt] = useState('');
+  const ids = offers.map(o => o._id);
+  if(editing) return <OfferEditor initial={editing} existingIds={ids} users={users} onClose={(changed) => { setEditing(null); if(changed) reload(); }}/>;
+  const nq = offNorm(q).trim();
+  const list = offers.filter(o => {
+    if(st && o.status !== st) return false;
+    if(!nq) return true;
+    const c = o.customer || {};
+    return nq.split(/\s+/).every(w => offNorm([o.number, c.company, c.name, c.email, c.phone, c.ico, o.axle, (o.items || []).map(i => i.name + ' ' + i.code).join(' ')].join(' ')).includes(w));
+  }).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || String(b.number).localeCompare(String(a.number)));
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8,marginBottom:12}}>
+        <h3 style={{margin:0}}>Nabídky ({offers.length})</h3>
+        <button className="auth-btn" style={{width:'auto',margin:0,padding:'10px 18px'}} onClick={() => setEditing(emptyOffer(ids))}>+ Nová nabídka</button>
+      </div>
+      {error && <p style={{color:'var(--red)',fontWeight:600}}>Nabídky nelze načíst: {error}</p>}
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:12}}>
+        <input className="offer-in" style={{flex:'1 1 240px'}} placeholder="Hledat: číslo, firma, jméno, e-mail, IČO, náprava, díl…" value={q} onChange={e => setQ(e.target.value)}/>
+        <select className="offer-in" style={{flex:'0 1 180px'}} value={st} onChange={e => setSt(e.target.value)}>
+          <option value="">Všechny stavy</option>
+          {Object.entries(OFFER_STATUSES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+        </select>
+      </div>
+      {list.length === 0 ? <p style={{color:'var(--text-muted)'}}>{offers.length ? 'Žádná nabídka neodpovídá hledání.' : 'Zatím žádné nabídky. Vytvořte první tlačítkem „+ Nová nabídka“.'}</p> : (
+        <div className="table-scroll">
+          <table className="offer-table">
+            <thead><tr><th>Číslo</th><th>Datum</th><th>Zákazník</th><th>E-mail / telefon</th><th>Náprava</th><th style={{textAlign:'right'}}>Celkem s DPH</th><th>Stav</th></tr></thead>
+            <tbody>{list.map(o => {
+              const c = o.customer || {}, s = OFFER_STATUSES[o.status] || OFFER_STATUSES.draft;
+              return (
+                <tr key={o._id} onClick={() => setEditing(o)} style={{cursor:'pointer'}}>
+                  <td style={{fontWeight:700,whiteSpace:'nowrap'}}>{o.number}</td>
+                  <td style={{whiteSpace:'nowrap'}}>{czDate(o.date)}</td>
+                  <td>{c.company && <strong>{c.company}<br/></strong>}{c.name}</td>
+                  <td>{c.email}<br/><small>{c.phone}</small></td>
+                  <td style={{fontFamily:'monospace'}}>{o.axle || '—'}</td>
+                  <td style={{textAlign:'right',fontWeight:700,whiteSpace:'nowrap'}}>{fmtPrice(offerTotals(o.items).total)}</td>
+                  <td><span className="offer-badge" style={{background:s.color}}>{s.label}</span>{o.orderId && <><br/><small>{o.orderId}</small></>}</td>
+                </tr>);
+            })}</tbody>
+          </table>
+        </div>)}
+    </div>
+  );
+}
+
+function OfferEditor({ initial, existingIds, users, onClose }) {
+  const { products, setCart, cart, setPage, showToast, typeIndex } = useApp();
+  const [o, setO] = useState(() => JSON.parse(JSON.stringify({ ...initial, customer: { ...emptyOffer([]).customer, ...(initial.customer || {}) }, items: initial.items || [] })));
+  const [isNew, setIsNew] = useState(!!initial._new);
+  const [dirty, setDirty] = useState(false);
+  const [busy, setBusy] = useState('');
+  const [msg, setMsg] = useState(null);
+  const [ps, setPs] = useState('');
+  const [sugg, setSugg] = useState(null);
+  const [changed, setChanged] = useState(false);
+  const [showAddr, setShowAddr] = useState(!!(initial.customer && (initial.customer.street || initial.customer.city)));
+
+  const upd = (patch) => { setO(prev => ({ ...prev, ...patch })); setDirty(true); };
+  const updC = (k, v) => { setO(prev => ({ ...prev, customer: { ...prev.customer, [k]: v } })); setDirty(true); };
+  const updItem = (idx, patch) => { setO(prev => ({ ...prev, items: prev.items.map((it, i) => i === idx ? { ...it, ...patch } : it) })); setDirty(true); };
+  const removeItem = (idx) => { setO(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== idx) })); setDirty(true); };
+  const addProduct = (p) => {
+    setO(prev => {
+      const ex = prev.items.findIndex(i => i.id === p.id);
+      if(ex >= 0) return { ...prev, items: prev.items.map((it, i) => i === ex ? { ...it, qty: (Number(it.qty) || 0) + 1 } : it) };
+      return { ...prev, items: [...prev.items, offerItemFromProduct(p, 1)] };
+    });
+    setDirty(true);
+  };
+  const addCustom = () => { setO(prev => ({ ...prev, items: [...prev.items, { id: 'custom-' + Date.now().toString(36), code: '', name: '', subtitle: '', url: '', image: '', qty: 1, price: 0, custom: true }] })); setDirty(true); };
+  const t = offerTotals(o.items);
+
+  const nps = offNorm(ps).trim();
+  const results = nps.length < 2 ? [] : products.filter(p => { const h = offNorm(p.name + ' ' + (p.code || '') + ' ' + (p.subtitle || '')); return nps.split(/\s+/).every(w => h.includes(w)); })
+    .filter((v, i, a) => a.findIndex(x => x.id === v.id) === i).slice(0, 40);
+
+  const pickUser = (uid) => {
+    const u = users.find(x => (x._id || x.uid) === uid); if(!u) return;
+    setO(prev => ({ ...prev, customer: { company: u.company || '', name: u.name || '', phone: u.phone || '', email: u.email || '', ico: u.ico || '', dic: u.dic || '', street: u.street || '', city: u.city || '', zip: u.zip || '' } }));
+    if(u.street || u.city) setShowAddr(true);
+    setDirty(true);
+  };
+  const suggest = () => { setSugg(axlePartsFor(o.axle, products)); };
+  useEffect(() => { if(sugg && !sugg.error) setSugg(axlePartsFor(o.axle, products)); }, [typeIndex]);
+
+  const docData = (extra) => {
+    const tt = offerTotals(o.items);
+    const items = o.items.map(i => ({ id: i.id, code: i.code || '', name: i.name || '', subtitle: i.subtitle || '', url: i.url || '', image: i.image || '', qty: offInt(i.qty), price: Math.max(0, Math.round(Number(i.price) || 0)), custom: !!i.custom, eshopPrice: i.eshopPrice || 0 }));
+    return JSON.parse(JSON.stringify({ id: o.number, number: o.number, date: o.date, status: o.status || 'draft', customer: o.customer, axle: String(o.axle || '').trim().toUpperCase(), notes: o.notes || '', items,
+      subtotal: tt.subtotal, vatTotal: tt.vatTotal, total: tt.total, sentAt: o.sentAt || '', sentTo: o.sentTo || '', orderId: o.orderId || '', ...(extra || {}) }));
+  };
+  const validate = (forSend) => {
+    if(!/^FIMAS\d{8}(-\d+)?$/.test(o.number)) return 'Číslo nabídky musí mít tvar FIMASDDMMRRRR (příp. -2, -3…).';
+    if(isNew && existingIds.includes(o.number)) return 'Nabídka s číslem ' + o.number + ' už existuje.';
+    if(forSend) {
+      if(!o.items.length) return 'Nabídka nemá žádnou položku.';
+      if(o.items.some(i => !String(i.name || '').trim() || offInt(i.qty) < 1)) return 'Každá položka musí mít název a počet kusů alespoň 1.';
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(o.customer.email || '').trim())) return 'Vyplňte platný e-mail zákazníka.';
+    }
+    return '';
+  };
+  const save = async (extra, quiet) => {
+    const v = validate(false); if(v) { setMsg({ err: true, text: v }); return false; }
+    const f = getFb(); if(!f) { setMsg({ err: true, text: FB_UNAVAILABLE }); return false; }
+    const data = docData(extra);
+    data.updatedAt = f.ts();
+    if(isNew) { data.createdAt = f.ts(); data.createdBy = (f.auth.currentUser && f.auth.currentUser.email) || ''; }
+    try {
+      await f.db.collection('offers').doc(o.number).set(data, { merge: true });
+      setO(prev => ({ ...prev, ...(extra || {}), axle: data.axle, items: data.items }));
+      setIsNew(false); setDirty(false); setChanged(true);
+      if(!quiet) { setMsg({ text: 'Nabídka ' + o.number + ' uložena.' }); showToast('Nabídka uložena'); }
+      return true;
+    } catch(e) { setMsg({ err: true, text: 'Uložení se nepodařilo: ' + fbErr(e) }); return false; }
+  };
+  const offerForPrint = () => ({ ...docData(), axle: String(o.axle || '').trim().toUpperCase() });
+  const print = () => {
+    const w = window.open('', '_blank');
+    if(!w) { setMsg({ err: true, text: 'Prohlížeč zablokoval nové okno – povolte vyskakovací okna pro tento web.' }); return; }
+    w.document.write(buildOfferHTML(offerForPrint(), { logo: true, print: true })); w.document.close();
+  };
+  const pdf = async () => {
+    setBusy('pdf');
+    try { const doc = await htmlToPdf(buildOfferHTML(offerForPrint(), { logo: true })); doc.save('Nabidka-' + o.number + '.pdf'); }
+    catch(e) { setMsg({ err: true, text: 'Export PDF se nepodařil: ' + (e.message || e) + ' Použijte Tisk → Uložit jako PDF.' }); }
+    setBusy('');
+  };
+  const send = async () => {
+    const v = validate(true); if(v) { setMsg({ err: true, text: v }); return; }
+    const to = String(o.customer.email).trim();
+    if(!window.confirm('Odeslat nabídku ' + o.number + ' zákazníkovi na ' + to + '?\n(Kopie přijde na ' + ORDER_EMAIL + '.)')) return;
+    setBusy('send'); setMsg(null);
+    try {
+      if(!(await save(null, true))) { setBusy(''); return; }
+      const f = getFb(); const cu = f && f.auth.currentUser;
+      if(!cu) throw new Error('Nejste přihlášen.');
+      const token = await cu.getIdToken();
+      const of = offerForPrint();
+      const html = buildOfferHTML(of, {});
+      const greet = o.customer.name ? 'Dobrý den, ' + offEsc(o.customer.name) + ',' : 'Dobrý den,';
+      const intro = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:800px;margin:0 auto 12px;padding:16px 20px;font-size:14px;line-height:1.55;color:#111">
+<p style="margin:0 0 8px">${greet}</p>
+<p style="margin:0 0 8px">na základě Vaší poptávky Vám zasíláme cenovou nabídku <strong>č. ${offEsc(o.number)}</strong> ze dne <strong>${czDate(o.date)}</strong>. Nabídku najdete níže a také v příloze ve formátu PDF.</p>
+<p style="margin:0">Na tento e-mail můžete jednoduše odpovědět – odpověď dorazí na <a href="mailto:${COMPANY.email}">${COMPANY.email}</a>.</p></div>`;
+      const customerHtml = html.replace(/<body([^>]*)>/i, (m) => m + intro);
+      let attachments = [];
+      try { const doc = await htmlToPdf(buildOfferHTML(of, { logo: true })); attachments = [{ filename: 'Nabidka-' + o.number + '.pdf', contentBase64: doc.output('datauristring').split(',')[1] }]; }
+      catch(e) { console.warn('[ADR E-shop] PDF příloha se nevytvořila', e); }
+      const resp = await fetch(EMAIL_FUNCTION_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ type: 'offer', orderNumber: o.number, subject: 'Cenová nabídka ' + o.number + ' – ' + COMPANY.name, html, customerHtml, customerEmail: to, customerName: o.customer.name || '', attachments }) });
+      let r = {}; try { r = await resp.json(); } catch {}
+      if(!resp.ok || !r.success) throw new Error(r.error || ('HTTP ' + resp.status));
+      const extra = { sentAt: new Date().toISOString(), sentTo: to, status: ['accepted', 'ordered'].includes(o.status) ? o.status : 'sent' };
+      await save(extra, true);
+      setMsg({ text: 'Nabídka odeslána na ' + to + (attachments.length ? ' (s PDF v příloze).' : ' (bez PDF přílohy – nepodařilo se ji vytvořit).') });
+      showToast('Nabídka odeslána');
+    } catch(e) { setMsg({ err: true, text: 'Odeslání se nepodařilo: ' + (e.message || e) }); }
+    setBusy('');
+  };
+  const toOrder = async () => {
+    const v = validate(true); if(v) { setMsg({ err: true, text: v }); return; }
+    if(o.status === 'ordered' && !window.confirm('Z této nabídky už byla vytvořena objednávka ' + (o.orderId || '') + '. Vytvořit další?')) return;
+    if(cart.length && !window.confirm('Košík obsahuje ' + cart.length + ' položek. Nahradit je položkami nabídky?')) return;
+    if(!(await save(o.status === 'draft' || o.status === 'sent' ? { status: 'accepted' } : null, true))) return;
+    const c = o.customer;
+    const note = 'Dle nabídky ' + o.number + ' ze dne ' + czDate(o.date) + (o.axle ? ', náprava ' + String(o.axle).trim().toUpperCase() : '') + '.';
+    setCart(o.items.map(i => ({ id: i.custom ? i.id : i.id, code: i.code || '', name: i.name, subtitle: i.subtitle || '', price: Math.max(0, Math.round(Number(i.price) || 0)), image: i.image || '', url: i.url || '', qty: offInt(i.qty), fixedPrice: true, offerNo: o.number })));
+    try { sessionStorage.setItem(OFFER_CHECKOUT_KEY, JSON.stringify({ offerId: o.number, form: { name: c.name || '', email: c.email || '', phone: c.phone || '', company: c.company || '', ico: c.ico || '', dic: c.dic || '', street: c.street || '', city: c.city || '', zip: c.zip || '', note } })); } catch {}
+    showToast('Položky nabídky jsou v košíku – doplňte adresu a odešlete objednávku');
+    setPage('checkout');
+  };
+  const del = async () => {
+    if(isNew) { onClose(false); return; }
+    if(!window.confirm('Opravdu trvale smazat nabídku ' + o.number + '? Tuto akci nelze vrátit.')) return;
+    const f = getFb();
+    try { await f.db.collection('offers').doc(o.number).delete(); showToast('Nabídka smazána'); onClose(true); }
+    catch(e) { setMsg({ err: true, text: 'Smazání se nepodařilo: ' + fbErr(e) }); }
+  };
+  const back = () => { if(dirty && !window.confirm('Máte neuložené změny. Opravdu odejít bez uložení?')) return; onClose(changed); };
+  const field = (label, k, type, ph) => (
+    <label className="offer-field"><span>{label}</span><input className="offer-in" type={type || 'text'} placeholder={ph || ''} value={o.customer[k] || ''} onChange={e => updC(k, e.target.value)}/></label>
+  );
+  const s = OFFER_STATUSES[o.status] || OFFER_STATUSES.draft;
+  const SuggList = ({ title, list }) => !list.length ? null : (
+    <div style={{marginTop:8}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+        <strong style={{fontSize:13}}>{title} ({list.length})</strong>
+        <button className="page-btn" onClick={() => list.forEach(addProduct)}>+ Přidat vše</button>
+      </div>
+      {list.map(p => <OfferProductRow key={p.id} p={p} inOffer={o.items.some(i => i.id === p.id)} onAdd={() => addProduct(p)}/>)}
+    </div>);
+
+  return (
+    <div className="offer-editor">
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8,marginBottom:12}}>
+        <button className="page-btn" onClick={back}>← Zpět na seznam</button>
+        <span className="offer-badge" style={{background:s.color}}>{s.label}{dirty ? ' · neuloženo' : ''}</span>
+      </div>
+
+      <div className="offer-card">
+        <div className="offer-grid">
+          <label className="offer-field"><span>Číslo nabídky</span><input className="offer-in" style={{fontWeight:700}} value={o.number} disabled={!isNew} onChange={e => upd({ number: e.target.value.trim().toUpperCase() })}/></label>
+          <label className="offer-field"><span>Datum vytvoření</span><input className="offer-in" type="date" value={o.date} onChange={e => { const d = e.target.value; upd(isNew ? { date: d, number: nextOfferNumber(existingIds, d) } : { date: d }); }}/></label>
+          <label className="offer-field"><span>Platnost do</span><input className="offer-in" value={czDate(offerValidUntil(o.date))} disabled/></label>
+          <label className="offer-field"><span>Stav</span>
+            <select className="offer-in" value={o.status} onChange={e => upd({ status: e.target.value })}>{Object.entries(OFFER_STATUSES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label>
+        </div>
+        {(o.sentAt || o.orderId) && <p style={{fontSize:12,color:'var(--text-muted)',margin:'8px 0 0'}}>
+          {o.sentAt && <>Odesláno {new Date(o.sentAt).toLocaleString('cs-CZ')} na {o.sentTo}. </>}{o.orderId && <>Objednávka: <strong>{o.orderId}</strong>.</>}</p>}
+      </div>
+
+      <div className="offer-card">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8,marginBottom:8}}>
+          <h4 style={{margin:0}}>Zákazník</h4>
+          {users.length > 0 && <select className="offer-in" style={{maxWidth:320}} value="" onChange={e => pickUser(e.target.value)}>
+            <option value="">Vybrat registrovaného zákazníka…</option>
+            {users.map(u => <option key={u._id} value={u._id}>{[u.company, u.name, u.email].filter(Boolean).join(' · ')}</option>)}
+          </select>}
+        </div>
+        <div className="offer-grid">
+          {field('Firma', 'company')}{field('Jméno a příjmení', 'name')}{field('Telefon', 'phone', 'tel')}{field('E-mail', 'email', 'email')}{field('IČO', 'ico')}
+        </div>
+        <a onClick={() => setShowAddr(v => !v)} style={{display:'inline-block',marginTop:8,fontSize:13,color:'var(--blue)',cursor:'pointer'}}>{showAddr ? '▾' : '▸'} Adresa a DIČ (nepovinné – hodí se pro převod do objednávky)</a>
+        {showAddr && <div className="offer-grid" style={{marginTop:8}}>{field('Ulice a č. p.', 'street')}{field('Město', 'city')}{field('PSČ', 'zip')}{field('DIČ', 'dic')}</div>}
+      </div>
+
+      <div className="offer-card">
+        <h4 style={{margin:'0 0 8px'}}>Číslo nápravy</h4>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+          <input className="offer-in" style={{flex:'1 1 220px',fontFamily:'monospace',textTransform:'uppercase'}} placeholder="např. A70NA6INNO36" value={o.axle} onChange={e => upd({ axle: e.target.value })} onKeyDown={e => { if(e.key === 'Enter') suggest(); }}/>
+          <button className="page-btn" onClick={suggest} disabled={!String(o.axle).trim()}>🔎 Navrhnout díly</button>
+        </div>
+        {sugg && sugg.error && <p style={{color:'var(--orange)',fontSize:13,margin:'8px 0 0'}}>{sugg.error}</p>}
+        {sugg && !sugg.error && <div style={{marginTop:8}}>
+          <p style={{fontSize:13,margin:'0 0 4px'}}>Typ nápravy <strong>{sugg.axle}</strong>{sugg.axleLabel ? ' – ' + sugg.axleLabel : ''}{sugg.brakeLabels.length ? <> · brzda: <strong>{sugg.brakeLabels.join(', ')}</strong></> : null}{sugg.holes ? <> · {sugg.holes} otvorů</> : null}</p>
+          {!sugg.ready && <p style={{fontSize:12,color:'var(--text-muted)'}}>Data typů z e-shopu se ještě načítají…</p>}
+          {sugg.ready && !sugg.axleParts.length && !sugg.brakeParts.length && <p style={{fontSize:13,color:'var(--text-muted)'}}>K této nápravě nejsou v e-shopu přiřazené díly – přidejte je vyhledáním níže.</p>}
+          <div className="offer-sugg">
+            <SuggList title="Díly nápravy" list={sugg.axleParts}/>
+            <SuggList title="Díly brzdy" list={sugg.brakeParts}/>
+          </div>
+        </div>}
+      </div>
+
+      <div className="offer-card">
+        <h4 style={{margin:'0 0 8px'}}>Položky nabídky</h4>
+        <input className="offer-in" style={{width:'100%'}} placeholder="Hledat díl v e-shopu: název, kód, rozměr…" value={ps} onChange={e => setPs(e.target.value)}/>
+        {nps.length >= 2 && <div className="offer-sugg" style={{marginTop:6}}>
+          {results.length === 0 ? <p style={{fontSize:13,color:'var(--text-muted)',margin:'6px 0'}}>Nic nenalezeno.</p> :
+            results.map(p => <OfferProductRow key={p.id} p={p} inOffer={o.items.some(i => i.id === p.id)} onAdd={() => addProduct(p)}/>)}
+        </div>}
+        <div className="table-scroll" style={{marginTop:12}}>
+          <table className="offer-table offer-items">
+            <thead><tr><th>#</th><th>Kód</th><th>Název</th><th style={{textAlign:'right'}}>Ks</th><th style={{textAlign:'right'}}>Cena/ks bez DPH</th><th style={{textAlign:'right'}}>Celkem bez DPH</th><th style={{textAlign:'right'}}>Celkem s DPH</th><th></th></tr></thead>
+            <tbody>
+              {o.items.length === 0 && <tr><td colSpan={8} style={{color:'var(--text-muted)',textAlign:'center',padding:16}}>Zatím žádné položky – vyhledejte díl, použijte „Navrhnout díly“ nebo přidejte vlastní položku.</td></tr>}
+              {o.items.map((i, n) => (
+                <tr key={i.id + '-' + n}>
+                  <td>{n + 1}</td>
+                  <td>{i.custom ? <input className="offer-in sm" style={{width:90}} value={i.code} onChange={e => updItem(n, { code: e.target.value })}/> : <span style={{fontFamily:'monospace',fontSize:12}}>{i.code}</span>}</td>
+                  <td style={{minWidth:200}}>{i.custom ? <input className="offer-in sm" style={{width:'100%'}} placeholder="Název položky" value={i.name} onChange={e => updItem(n, { name: e.target.value })}/> : <><strong>{i.name}</strong>{i.subtitle && <div style={{fontSize:11,color:'var(--text-muted)'}}>{i.subtitle}</div>}</>}
+                    {!i.custom && i.eshopPrice > 0 && Math.round(i.eshopPrice) !== Math.round(Number(i.price) || 0) && <div style={{fontSize:11,color:'var(--orange)'}}>cena v e-shopu {fmtPrice(Math.round(i.eshopPrice))}</div>}</td>
+                  <td style={{textAlign:'right'}}><input className="offer-in sm" type="number" min="1" inputMode="numeric" style={{width:70,textAlign:'right'}} value={i.qty} onChange={e => updItem(n, { qty: e.target.value })}/></td>
+                  <td style={{textAlign:'right'}}><input className="offer-in sm" type="number" min="0" step="1" inputMode="numeric" style={{width:100,textAlign:'right'}} value={i.price} onChange={e => updItem(n, { price: e.target.value })}/></td>
+                  <td style={{textAlign:'right',whiteSpace:'nowrap',fontWeight:700}}>{fmtPrice(t.lines[n])}</td>
+                  <td style={{textAlign:'right',whiteSpace:'nowrap'}}>{fmtPrice(withVat(t.lines[n]))}</td>
+                  <td><button className="page-btn" title="Odebrat" onClick={() => removeItem(n)} style={{padding:'4px 10px'}}>✕</button></td>
+                </tr>))}
+            </tbody>
+          </table>
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12,marginTop:10}}>
+          <button className="page-btn" onClick={addCustom}>+ Vlastní položka</button>
+          <div style={{textAlign:'right',fontSize:14,lineHeight:1.7}}>
+            <div>Celkem bez DPH: <strong>{fmtPrice(t.subtotal)}</strong></div>
+            <div>DPH {Math.round(COMPANY.vatRate * 100)} %: <strong>{fmtPrice(t.vatTotal)}</strong></div>
+            <div style={{fontSize:18}}>Celkem s DPH: <strong>{fmtPrice(t.total)}</strong></div>
+            <div style={{fontSize:12,color:'var(--orange)',fontWeight:600}}>⚠ Bez poštovného a balného</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="offer-card">
+        <h4 style={{margin:'0 0 8px'}}>Poznámka <span style={{fontWeight:400,fontSize:12,color:'var(--text-muted)'}}>(tiskne se na nabídku)</span></h4>
+        <textarea className="offer-in" rows={4} style={{width:'100%',resize:'vertical'}} value={o.notes} onChange={e => upd({ notes: e.target.value })} placeholder="Dodatečné informace pro zákazníka – termín dodání, alternativy, podmínky…"/>
+      </div>
+
+      {msg && <p style={{color: msg.err ? 'var(--red)' : 'var(--green)', fontWeight:600}}>{msg.text}</p>}
+      <div className="offer-actions">
+        <button className="auth-btn" disabled={!!busy} onClick={() => save()}>💾 Uložit</button>
+        <button className="page-btn" disabled={!!busy} onClick={send} style={{background:'var(--blue)',color:'#fff'}}>{busy === 'send' ? 'Odesílám…' : '✉ Odeslat zákazníkovi'}</button>
+        <button className="page-btn" disabled={!!busy} onClick={print}>🖨️ Tisk</button>
+        <button className="page-btn" disabled={!!busy} onClick={pdf} style={{background:'var(--red)',color:'#fff'}}>{busy === 'pdf' ? 'Vytvářím…' : '📄 PDF'}</button>
+        <button className="page-btn" disabled={!!busy} onClick={toOrder} style={{background:'var(--green)',color:'#fff'}}>🛒 Překlopit do objednávky</button>
+        <button className="page-btn" disabled={!!busy} onClick={del} style={{color:'var(--red)'}}>🗑 {isNew ? 'Zahodit' : 'Smazat'}</button>
+      </div>
+    </div>
+  );
+}
+
+function OfferProductRow({ p, inOffer, onAdd }) {
+  return (
+    <div className="offer-prow">
+      <div style={{minWidth:0,flex:1}}>
+        <div style={{fontWeight:600,fontSize:13}}>{p.name}</div>
+        <div style={{fontSize:11,color:'var(--text-muted)'}}>{[p.code, p.subtitle].filter(Boolean).join(' · ')}{(p.code || p.subtitle) ? ' · ' : ''}<span style={{color: p.stock !== false ? 'var(--green)' : 'var(--orange)'}}>{p.stock !== false ? 'skladem' : 'na objednávku'}</span></div>
+      </div>
+      <div style={{whiteSpace:'nowrap',fontSize:13,fontWeight:700}}>{fmtPrice(Math.round(Number(p.price) || 0))} <span style={{fontWeight:400,fontSize:11,color:'var(--text-muted)'}}>bez DPH</span></div>
+      <button className="page-btn" onClick={onAdd} style={{padding:'4px 12px'}}>{inOffer ? '+1' : '+ Přidat'}</button>
+    </div>
+  );
+}
+
 /* Admin panel: přístup jen pro účty z ADMIN_EMAILS s ověřeným e-mailem (vynucují i pravidla Firestore).
    Dřívější heslo "fimas2026" bylo jen v prohlížeči a k datům na serveru přístup dát nemůže. */
 function AdminPage() {
@@ -3451,7 +4021,7 @@ function AdminPage() {
   const [pw, setPw] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
-  const [data, setData] = useState({ users: [], orders: [], withdrawals: [], loaded: false, error: '' });
+  const [data, setData] = useState({ users: [], orders: [], withdrawals: [], offers: [], offersError: '', loaded: false, error: '' });
   const isAdmin = !!(user && user.uid && user.isAdmin);
   const tsOf = (o) => (o && o.createdAt && o.createdAt.seconds) || 0;
 
@@ -3459,12 +4029,15 @@ function AdminPage() {
     const f = getFb(); if(!f) return;
     setData(d => ({ ...d, loaded: false, error: '' }));
     Promise.all(['users', 'orders', 'withdrawals'].map(c => f.db.collection(c).get().then(qs => qs.docs.map(d => ({ _id: d.id, ...d.data() })))))
-      .then(([users, orders, withdrawals]) => setData({
+      .then(([users, orders, withdrawals]) => setData(d => ({ ...d,
         users: users.sort((x, y) => tsOf(x) - tsOf(y)),
         orders: orders.sort((x, y) => tsOf(x) - tsOf(y)),
         withdrawals: withdrawals.sort((x, y) => tsOf(y) - tsOf(x)),
-        loaded: true, error: '' }))
+        loaded: true, error: '' })))
       .catch(e => setData(d => ({ ...d, loaded: true, error: fbErr(e) })));
+    // Nabídky zvlášť – chybějící pravidlo pro "offers" nesmí shodit zbytek adminu
+    f.db.collection('offers').get().then(qs => setData(d => ({ ...d, offers: qs.docs.map(x => ({ _id: x.id, ...x.data() })), offersError: '' })))
+      .catch(e => setData(d => ({ ...d, offers: [], offersError: fbErr(e) })));
   }, []);
   useEffect(() => { if(isAdmin) load(); }, [isAdmin]);
 
@@ -3549,11 +4122,15 @@ function AdminPage() {
         <button className={`page-btn${tab==='withdrawals'?' active':''}`} onClick={()=>setTab('withdrawals')}>
           Odstoupení ({data.withdrawals.length})
         </button>
+        <button className={`page-btn${tab==='offers'?' active':''}`} onClick={()=>setTab('offers')}>
+          📄 Nabídky ({data.offers.length})
+        </button>
         <button className={`page-btn${tab==='notice'?' active':''}`} onClick={()=>setTab('notice')}>
           📢 Oznámení
         </button>
       </div>
       {tab === 'notice' && <NoticeAdmin/>}
+      {tab === 'offers' && <OffersAdmin offers={data.offers} users={users} error={data.offersError} reload={load}/>}
       {tab === 'withdrawals' && (
         <div style={{overflowX:'auto'}}>
           {data.withdrawals.length === 0 ? <p style={{color:'var(--text-muted)'}}>Žádná odstoupení od smlouvy.</p> : (
@@ -3899,12 +4476,12 @@ function ChatWidget() {
 
   if (allowed && window.__tawkLoaded && !loading && !note) return null; // Tawk.to má vlastní bublinu
   return (
-    <div style={{position:'fixed',right:20,bottom:84,zIndex:1400,display:'flex',flexDirection:'column',alignItems:'flex-end',gap:8}}>
+    <div className="chat-fab" style={{position:'fixed',right:20,bottom:84,zIndex:1400,display:'flex',flexDirection:'column',alignItems:'flex-end',gap:8}}>
       {note && <div style={{maxWidth:260,background:'#fff',color:'#111',fontSize:12,padding:'8px 12px',borderRadius:10,boxShadow:'0 4px 16px rgba(0,0,0,0.25)'}}>{note}</div>}
-      <button onClick={startChat} aria-label="Otevřít chat" title="Chat s FIMAS"
+      <button onClick={startChat} aria-label="Otevřít chat" title="Chat s FIMAS" className="chat-fab-btn"
         style={{display:'flex',alignItems:'center',gap:8,padding:'12px 18px',borderRadius:28,border:'none',cursor:'pointer',
           background:'var(--gold)',color:'#000',fontWeight:800,fontSize:14,boxShadow:'0 4px 16px rgba(0,0,0,0.3)'}}>
-        <span style={{fontSize:18}}>💬</span>{loading ? 'Načítám chat…' : 'Chat'}
+        <span style={{fontSize:18}}>💬</span><span className="chat-fab-label">{loading ? 'Načítám chat…' : 'Chat'}</span>
       </button>
     </div>
   );
@@ -3992,7 +4569,7 @@ function App() {
         setProducts(merged);
         setLastUpdated(lastMod ? new Date(lastMod) : new Date());
         // Košík: přecenit položky podle aktuálních dat
-        setCart(prev => prev.map(i => { const np = merged.find(x => x.id === i.id); return np && np.price && np.price !== i.price ? { ...i, price: np.price } : i; }));
+        setCart(prev => prev.map(i => { const np = merged.find(x => x.id === i.id); return !i.fixedPrice && np && np.price && np.price !== i.price ? { ...i, price: np.price } : i; }));
         setLoading(false);
         console.log('[ADR E-shop] Data refreshed: ' + merged.length + ' products');
       })

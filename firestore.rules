@@ -44,6 +44,11 @@ service cloud.firestore {
     }
 
     // Vše ostatní zakázáno
+    // Cenové nabídky – jen admin (číst, vytvářet, upravovat, mazat)
+    match /offers/{id} {
+      allow read, write: if isAdmin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
