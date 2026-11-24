@@ -541,8 +541,8 @@ function syncFromData(cur, dp) {
   const djSub = dp.subtitle || '';
   if (djSub && (!cur.subtitle || djSub.length > cur.subtitle.length)) u.subtitle = djSub;
   // fotka a název z obchod.fimas.cz mají přednost (vložená data měla u řady položek společnou/obecnou fotku)
-  if (dp.image && !isPlaceholderImg(dp.image)) u.image = dp.image;
-  else if (!cur.image && dp.image) u.image = dp.image;
+  // na obchod.fimas.cz je u produktu jen „obrázek připravujeme“ → nezobrazovat cizí fotku jiného dílu
+  if (dp.image) u.image = isPlaceholderImg(dp.image) ? '' : dp.image;
   const dn = (dp.name || '').trim();
   if (dn && dn !== (cur.name || '').trim()) { u.name = dn; u.altName = cur.name; }
   if (dp.url && extractDnum(dp.url)) u.url = dp.url;           // skutečný odkaz na produkt
