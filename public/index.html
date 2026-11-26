@@ -424,6 +424,13 @@
     .id-catalog-html { max-height:none; margin-top:4px; }
     .eshop-note { margin:0 0 16px; padding:12px 16px; border-radius:10px; background:#fff7ed; border:1px solid #fdba74; color:#9a3412; font-size:14px; }
     @media (max-width:600px) { .detail-desc { padding:14px; } .cat-html { padding:10px; } }
+
+    .chat-offline-card { position:relative; width:270px; max-width:calc(100vw - 40px); background:#fff; color:#111; border-radius:14px; padding:14px 16px; box-shadow:0 8px 28px rgba(0,0,0,0.3); font-size:13px; display:flex; flex-direction:column; gap:6px; box-sizing:border-box; }
+    .chat-offline-card strong { font-size:14px; padding-right:20px; }
+    .chat-offline-card p { margin:0 0 4px; line-height:1.45; color:#334155; }
+    .chat-offline-card a { display:block; padding:8px 10px; border:1px solid #e2e8f0; border-radius:8px; color:#0f172a; text-decoration:none; font-weight:600; }
+    .chat-offline-card a:hover { border-color:var(--gold); }
+    .chat-offline-close { position:absolute; top:6px; right:8px; border:none; background:none; font-size:20px; cursor:pointer; color:#64748b; }
 </style>
 </head>
 <body>
@@ -4801,19 +4808,43 @@ function NoticeAdmin() {
   );
 }
 
+/* Provozní doba chatu – musí odpovídat rozvrhu v dashboard.tawk.to (Administration → Chat Widget → Scheduler).
+   Mimo tuto dobu se Tawk.to vůbec nenačítá (jinak by hlásil, že se nemůže připojit) a místo chatu nabídneme e-mail / WhatsApp / telefon. */
+const CHAT_SCHEDULE = { days: [1, 2, 3, 4, 5], from: '07:00', to: '14:45', label: 'Po–Pá 7:00–14:45' };
+function chatOpenNow(d) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Prague', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(d || new Date());
+    const get = (t) => (parts.find(x => x.type === t) || {}).value;
+    const wd = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 0 }[get('weekday')];
+    const mins = (+get('hour') % 24) * 60 + (+get('minute'));
+    const toMin = (s) => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };
+    return CHAT_SCHEDULE.days.includes(wd) && mins >= toMin(CHAT_SCHEDULE.from) && mins < toMin(CHAT_SCHEDULE.to);
+  } catch(e) { return true; }
+}
+
 function ChatWidget() {
   // Tawk.to live chat — stejný účet jako obchod.fimas.cz (dashboard.tawk.to)
   // Bez souhlasu se zobrazí vlastní tlačítko "Chat"; kliknutí = souhlas → načte Tawk.to a rovnou otevře okno.
   const [allowed, setAllowed] = useState(() => !!(getCookieConsent() || {}).chat);
   const [loading, setLoading] = useState(false);
   const [note, setNote] = useState('');
+  const [openNow, setOpenNow] = useState(() => chatOpenNow());
+  const [offlineCard, setOfflineCard] = useState(false);
   const openOnLoad = useRef(false);
   useEffect(() => {
     const h = () => setAllowed(!!(getCookieConsent() || {}).chat);
     window.addEventListener('adr-consent', h); return () => window.removeEventListener('adr-consent', h);
   }, []);
+  // každou minutu přepočítat provozní dobu (stránka může být otevřená přes 14:45 / 7:00)
+  useEffect(() => { const t = setInterval(() => setOpenNow(chatOpenNow()), 60000); return () => clearInterval(t); }, []);
   useEffect(() => {
-    if (!allowed) return;
+    if (openNow) { setOfflineCard(false); return; }
+    // po skončení provozní doby schovat bublinu Tawk.to (pokud už byla načtená)
+    if (window.__tawkLoaded && window.Tawk_API && window.Tawk_API.hideWidget) { try { window.Tawk_API.hideWidget(); } catch(e) {} }
+    setLoading(false); setNote('');
+  }, [openNow]);
+  useEffect(() => {
+    if (!allowed || !openNow) return;
     if (window.__tawkLoaded) { try { window.Tawk_API.showWidget && window.Tawk_API.showWidget(); } catch(e) {} return; }
     if (location.protocol === 'file:') { setNote('Chat funguje jen na webu ' + COMPANY.web + ' (ne v souboru otevřeném z disku).'); return; }
     window.__tawkLoaded = true;
@@ -4831,11 +4862,19 @@ function ChatWidget() {
     s1.setAttribute('crossorigin', '*');
     s1.onerror = () => { setLoading(false); window.__tawkLoaded = false; setNote('Chat se nepodařilo načíst. Napište nám na WhatsApp ' + COMPANY.mobile + '.'); };
     document.head.appendChild(s1);
-    const t = setTimeout(() => { if (!window.Tawk_API || !window.Tawk_API.getStatus) { setLoading(false); setNote('Chat se nenačetl (může ho blokovat doplněk prohlížeče). Napište nám na WhatsApp ' + COMPANY.mobile + '.'); } }, 15000);
+    const t = setTimeout(() => {
+      if (!window.Tawk_API || !window.Tawk_API.getStatus) {
+        setLoading(false);
+        // těsně před koncem provozní doby už Tawk.to widget nespustí → nabídnout kontakty, ne chybu
+        if (!chatOpenNow()) { setOpenNow(false); setOfflineCard(true); }
+        else setNote('Chat se nenačetl (může ho blokovat doplněk prohlížeče). Napište nám na WhatsApp ' + COMPANY.mobile + '.');
+      }
+    }, 15000);
     return () => clearTimeout(t);
-  }, [allowed]);
+  }, [allowed, openNow]);
 
   const startChat = () => {
+    if (!chatOpenNow()) { setOpenNow(false); setOfflineCard(v => !v); return; }
     openOnLoad.current = true;
     if (location.protocol === 'file:') { setNote('Chat funguje jen na webu ' + COMPANY.web + ' (ne v souboru otevřeném z disku).'); return; }
     const prev = getCookieConsent() || {};
@@ -4844,14 +4883,24 @@ function ChatWidget() {
     setAllowed(true);
   };
 
-  if (allowed && window.__tawkLoaded && !loading && !note) return null; // Tawk.to má vlastní bublinu
+  if (openNow && allowed && window.__tawkLoaded && !loading && !note) return null; // Tawk.to má vlastní bublinu
   return (
     <div className="chat-fab" style={{position:'fixed',right:20,bottom:84,zIndex:1400,display:'flex',flexDirection:'column',alignItems:'flex-end',gap:8}}>
       {note && <div style={{maxWidth:260,background:'#fff',color:'#111',fontSize:12,padding:'8px 12px',borderRadius:10,boxShadow:'0 4px 16px rgba(0,0,0,0.25)'}}>{note}</div>}
-      <button onClick={startChat} aria-label="Otevřít chat" title="Chat s FIMAS" className="chat-fab-btn"
+      {!openNow && offlineCard && (
+        <div className="chat-offline-card" role="dialog" aria-label="Chat mimo provozní dobu">
+          <button className="chat-offline-close" onClick={() => setOfflineCard(false)} aria-label="Zavřít">×</button>
+          <strong>Online chat je teď mimo provoz</strong>
+          <p>Chatujeme <b>{CHAT_SCHEDULE.label}</b>. Mimo tuto dobu nám napište – odpovíme hned další pracovní den.</p>
+          <a href={`https://wa.me/${COMPANY.whatsapp}`} target="_blank" rel="noopener">🟢 WhatsApp {COMPANY.mobile}</a>
+          <a href={`mailto:${COMPANY.email}`}>✉️ {COMPANY.email}</a>
+          <a href={`tel:${COMPANY.phone.replace(/\s/g, '')}`}>📞 {COMPANY.phone} ({COMPANY.hours})</a>
+        </div>
+      )}
+      <button onClick={startChat} aria-label={openNow ? 'Otevřít chat' : 'Kontakt – chat je mimo provoz'} title={openNow ? 'Chat s FIMAS' : 'Chat ' + CHAT_SCHEDULE.label} className="chat-fab-btn"
         style={{display:'flex',alignItems:'center',gap:8,padding:'12px 18px',borderRadius:28,border:'none',cursor:'pointer',
-          background:'var(--gold)',color:'#000',fontWeight:800,fontSize:14,boxShadow:'0 4px 16px rgba(0,0,0,0.3)'}}>
-        <span style={{fontSize:18}}>💬</span><span className="chat-fab-label">{loading ? 'Načítám chat…' : 'Chat'}</span>
+          background: openNow ? 'var(--gold)' : '#cbd5e1',color:'#000',fontWeight:800,fontSize:14,boxShadow:'0 4px 16px rgba(0,0,0,0.3)'}}>
+        <span style={{fontSize:18}}>💬</span><span className="chat-fab-label">{!openNow ? 'Napište nám' : loading ? 'Načítám chat…' : 'Chat'}</span>
       </button>
     </div>
   );
