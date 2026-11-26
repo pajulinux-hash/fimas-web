@@ -417,6 +417,11 @@
     .cat-content-btn.dark { background:rgba(255,255,255,0.08); color:#fff; border-color:rgba(255,255,255,0.25); }
     .cat-html { margin-top:10px; background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px; max-height:75vh; overflow:auto; }
     .guide-html { color:#111; }
+    .id-catalog { margin:0 0 12px; }
+    .id-catalog summary { cursor:pointer; font-size:13px; font-weight:700; color:var(--gold); margin-bottom:6px; list-style:none; }
+    .id-catalog summary::-webkit-details-marker { display:none; }
+    .id-catalog summary span { font-weight:400; color:rgba(255,255,255,0.5); }
+    .id-catalog-html { max-height:none; margin-top:4px; }
     .eshop-note { margin:0 0 16px; padding:12px 16px; border-radius:10px; background:#fff7ed; border:1px solid #fdba74; color:#9a3412; font-size:14px; }
     @media (max-width:600px) { .detail-desc { padding:14px; } .cat-html { padding:10px; } }
 </style>
@@ -1604,6 +1609,62 @@ function AxlePartRow({p}) {
   );
 }
 
+/* Výřez katalogové tabulky z obchod.fimas.cz jen pro zadaný typ (identifikace nápravy)
+   mode 'hubs'  – náboje: řádky, jejichž OEM 61L<otvory><kód nápravy><č.> odpovídá nápravě (např. 61L6NA002 → NA)
+   mode 'seals' – těsnění: blok řádků se stejným TYP ADR (např. „JA 510, 540, 610“ → JA)
+   mode 'drums' – bubny: OEM 66L<kód brzdy>… (např. 66LJB0605 → JB), jinak podle rozměru 300/90 */
+function catalogExtract(html, mode, o) {
+  if(!html || typeof DOMParser === 'undefined') return null;
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const table = [...doc.querySelectorAll('table')].sort((a, b) => b.rows.length - a.rows.length)[0];
+  if(!table || table.rows.length < 2) return null;
+  const rows = [...table.rows];
+  const head = rows[0];
+  const headCells = [...head.cells].map(c => c.textContent.replace(/\s+/g, ' ').trim());
+  const colIdx = (name) => headCells.findIndex(h => h === name || h.startsWith(name + ' '));
+  const cellText = (r, i) => (i >= 0 && r.cells[i] ? r.cells[i].textContent.replace(/\s+/g, ' ').trim() : '');
+  let picked = [];
+  if(mode === 'hubs') {
+    picked = rows.slice(1).filter(r => [...String(r.textContent).matchAll(/61L(\d{1,2})([A-Z0-9]{2})(\d{3})/g)].some(m => m[2] === o.code));
+    const e = colIdx('E');
+    if(o.holes && e >= 0) { const h = picked.filter(r => cellText(r, e) === String(o.holes)); if(h.length) picked = h; }
+  } else if(mode === 'seals') {
+    const n = head.cells.length;
+    let inBlock = false;
+    rows.slice(1).forEach(r => {
+      const first = (r.cells[0] ? r.cells[0].textContent : '').replace(/\s+/g, ' ').trim();
+      if(r.cells.length >= n - 1 && /^[A-Z0-9]{2}(?![a-zá-ž0-9])/.test(first)) inBlock = first.split(/[\s,;/]+/).includes(o.code);
+      if(inBlock) picked.push(r);
+    });
+  } else if(mode === 'drums') {
+    const note = (r) => { const t = r.cells.length ? r.cells[r.cells.length - 1].textContent.replace(/\s+/g, '').trim() : ''; return /^[A-Z]{2,}$/.test(t) && t.length % 2 === 0 ? t.match(/../g) : []; };
+    const byCode = rows.slice(1).filter(r => (o.codes || []).some(c => note(r).includes(c) || [...String(r.textContent).matchAll(/66L([A-Z]{2})/g)].some(m => m[1] === c && !note(r).length)));
+    picked = byCode.length ? byCode : rows.slice(1).filter(r => (o.dims || []).some(d => String(r.cells[0] ? r.cells[0].textContent : '').includes(d.replace('x', '/'))));
+    const f = colIdx('F');
+    if(o.holes && f >= 0) { const h = picked.filter(r => cellText(r, f) === String(o.holes)); if(h.length) picked = h; }
+  }
+  if(!picked.length) return null;
+  const t2 = table.cloneNode(false);
+  const tb = doc.createElement('tbody');
+  [head, ...picked].forEach(r => tb.appendChild(r.cloneNode(true)));
+  t2.appendChild(tb);
+  return { html: t2.outerHTML, count: mode === 'seals' ? picked.filter(r => /^[A-Z0-9]{2}(?![a-zá-ž0-9])/.test((r.cells[0] ? r.cells[0].textContent : '').trim())).length : picked.length };
+}
+function catalogsForAxle(result, details) {
+  if(!details || !details.cat || !result) return { axle: [], brake: [] };
+  const C = details.cat, code = result.axleType, holes = result.holes || null;
+  const axle = [], brake = [];
+  const hubs = catalogExtract(C['náboj kola ADR'], 'hubs', { code, holes });
+  if(hubs) axle.push({ title: 'Katalog nábojů – náprava ' + code + (holes ? ', ' + holes + ' otvorů' : ''), ...hubs });
+  const seals = catalogExtract(C['těsnění náboje, gufera ADR'], 'seals', { code });
+  if(seals) axle.push({ title: 'Katalog těsnění náboje – náprava ' + code, ...seals });
+  const codes = result.brakeCode ? [result.brakeCode] : [...new Set((result.brakeEntries || []).flatMap(b => b.codes))];
+  const dims = [...new Set((result.brakeEntries || []).map(b => b.dim).filter(Boolean).concat(result.brakeTypes || []))];
+  const drums = catalogExtract(C['buben brzdy ADR, COLAERT'], 'drums', { codes, dims, holes });
+  if(drums) brake.push({ title: 'Katalog bubnů – brzda ' + (codes.join(', ') || dims.join(', ')) + (holes ? ', ' + holes + ' otvorů' : ''), ...drums });
+  return { axle, brake };
+}
+
 function AxleGuide() {
   const { details } = useApp();
   const [open, setOpen] = useState(false);
@@ -1616,10 +1677,11 @@ function AxleGuide() {
   );
 }
 function AxleIdentification() {
-  const { products, setPage, setSearch, setFilterCategory, setFilterSubcategory, setSelectedProduct, addToCart, showToast, typeIndex } = useApp();
+  const { products, setPage, setSearch, setFilterCategory, setFilterSubcategory, setSelectedProduct, addToCart, showToast, typeIndex, details } = useApp();
   const [showOther, setShowOther] = useState({});
   const [code, setCode] = useState('');
   const [result, setResult] = useState(null);
+  const idCatalogs = useMemo(() => (result && !result.error && result.axleType ? catalogsForAxle(result, details) : { axle: [], brake: [] }), [result, details]);
 
   // Categories relevant to axle type (not brake-dimension based)
   const AXLE_CATEGORIES = ['hubs','bearings','seals','wheel-studs','wheel-nuts','hub-caps',
@@ -1807,7 +1869,7 @@ function AxleIdentification() {
                 open: () => { setFilterCategory('axle-types'); setFilterSubcategory(result.axleType); setSearch(''); setPage('catalog'); window.scrollTo(0,0); } },
               { key:'brake', icon:'🛞', title:'Díly brzdy ' + (result.brakeCode || (result.brakeEntries || []).map(b => b.codes.join(', ')).join(' / ')), list:result.brakeParts || [], other:result.brakeOther || [],
                 src: (result.brakeEntries || []).length ? 'TYP BRZDY → ' + result.brakeEntries.map(b => b.label).join(' | ') : null,
-                drawings: [...new Set((result.brakeEntries || []).flatMap(b => typeImagesFor('brake', b.codes)))], dtitle: 'Rozkres – brzda ' + [...new Set((result.brakeEntries || []).flatMap(b => b.codes))].join(', '),
+                drawings: [...new Set((result.brakeEntries || []).flatMap(b => brakeDrawings(b.label).images))], dtitle: 'Rozkres – brzda ' + [...new Set((result.brakeEntries || []).flatMap(b => b.codes))].join(', '),
                 open: (result.brakeEntries || []).length ? () => { setFilterCategory('brake-types'); setFilterSubcategory(result.brakeEntries[0].label); setSearch(''); setPage('catalog'); window.scrollTo(0,0); } : null },
             ].map(sec => (
               <div key={sec.key} style={{marginTop:18}}>
@@ -1820,6 +1882,12 @@ function AxleIdentification() {
                   {result.holes ? ' · náboje a bubny jen pro ' + result.holes + ' otvorů' : ''}
                 </p>
                 <TypeDrawings images={sec.drawings} title={sec.dtitle} dark/>
+                {(idCatalogs[sec.key] || []).map(c => (
+                  <details key={c.title} className="id-catalog" open>
+                    <summary>📋 {c.title} <span>({c.count} {c.count === 1 ? 'položka' : c.count < 5 ? 'položky' : 'položek'})</span></summary>
+                    <EshopHtml html={c.html} className="cat-html id-catalog-html"/>
+                  </details>
+                ))}
                 {sec.list.length > 0 ? (
                   <div style={{border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,padding:'2px 8px'}}>
                     {sec.list.map(p => <AxlePartRow key={p.id} p={p}/>)}
