@@ -43,6 +43,23 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Počítadlo přístupů: každý smí jen přičíst +1 (visits/visitors/views), číst jen admin
+    match /visits/{day} {
+      allow read, delete: if isAdmin();
+      allow create: if day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+                    && request.resource.data.keys().hasOnly(['visits', 'visitors', 'views'])
+                    && request.resource.data.get('views', 0) <= 1
+                    && request.resource.data.get('visits', 0) <= 1
+                    && request.resource.data.get('visitors', 0) <= 1;
+      allow update: if request.resource.data.keys().hasOnly(['visits', 'visitors', 'views'])
+                    && request.resource.data.get('views', 0) >= resource.data.get('views', 0)
+                    && request.resource.data.get('views', 0) <= resource.data.get('views', 0) + 1
+                    && request.resource.data.get('visits', 0) >= resource.data.get('visits', 0)
+                    && request.resource.data.get('visits', 0) <= resource.data.get('visits', 0) + 1
+                    && request.resource.data.get('visitors', 0) >= resource.data.get('visitors', 0)
+                    && request.resource.data.get('visitors', 0) <= resource.data.get('visitors', 0) + 1;
+    }
+
     // Vše ostatní zakázáno
     // Cenové nabídky – jen admin (číst, vytvářet, upravovat, mazat)
     match /offers/{id} {

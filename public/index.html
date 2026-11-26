@@ -431,6 +431,17 @@
     .chat-offline-card a { display:block; padding:8px 10px; border:1px solid #e2e8f0; border-radius:8px; color:#0f172a; text-decoration:none; font-weight:600; }
     .chat-offline-card a:hover { border-color:var(--gold); }
     .chat-offline-close { position:absolute; top:6px; right:8px; border:none; background:none; font-size:20px; cursor:pointer; color:#64748b; }
+
+    .stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; }
+    .stat-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px 14px; }
+    .stat-label { font-size:12px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.4px; }
+    .stat-value { font-size:22px; font-weight:800; margin-top:4px; }
+    .stat-sub { font-size:12px; color:var(--text-muted); margin-top:2px; }
+    .stat-table td { vertical-align:middle; }
+    .stat-bar-cell { position:relative; min-width:140px; height:22px; display:flex; align-items:center; }
+    .stat-bar { position:absolute; left:0; top:3px; bottom:3px; background:rgba(212,175,55,0.35); border-radius:4px; }
+    .stat-bar.blue { background:rgba(37,99,235,0.22); }
+    .stat-bar-cell span { position:relative; padding-left:6px; font-weight:600; white-space:nowrap; }
 </style>
 </head>
 <body>
@@ -663,6 +674,25 @@ function getFb() {
     _fb = { auth, db: firebase.firestore(), ts: () => firebase.firestore.FieldValue.serverTimestamp() };
     return _fb;
   } catch (e) { console.warn('[ADR E-shop] Firebase init failed', e); return null; }
+}
+/* ===== Počítadlo přístupů (Firestore "visits/{RRRR-MM-DD}") =====
+   visitors = unikátní prohlížeče za den, visits = návštěvy (relace prohlížeče), views = zobrazené stránky.
+   Nepočítá prohlížeč admina (adr_nostats), roboty ani kopie mimo adrparts.cz. Pravidla povolí jen +1. */
+const STATS_HOSTS = ['adrparts.cz', 'www.adrparts.cz', 'adr-fimas.web.app', 'adr-fimas.firebaseapp.com'];
+const pragueDay = (d) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Prague' }).format(d || new Date());
+function trackVisit() {
+  try {
+    if (!STATS_HOSTS.includes(location.hostname)) return;
+    if (localStorage.getItem('adr_nostats')) return;
+    if (/bot|crawl|spider|slurp|headless|lighthouse|preview|facebookexternalhit/i.test(navigator.userAgent || '') || navigator.webdriver) return;
+    const f = getFb(); if (!f) return;
+    const inc = firebase.firestore.FieldValue.increment(1);
+    const day = pragueDay();
+    const upd = { views: inc };
+    if (!sessionStorage.getItem('adr_visit')) { sessionStorage.setItem('adr_visit', day); upd.visits = inc; }
+    if (localStorage.getItem('adr_seen_day') !== day) { localStorage.setItem('adr_seen_day', day); upd.visitors = inc; }
+    f.db.collection('visits').doc(day).set(upd, { merge: true }).catch(() => {});
+  } catch (e) {}
 }
 const FB_UNAVAILABLE = 'Přihlašování není dostupné – e-shop musí běžet na webu (ne ze souboru) a ve Firebase musí být zapnuté přihlášení e-mailem.';
 function fbErr(e) {
@@ -2553,6 +2583,111 @@ function CategoryContent({ slug }) {
   );
 }
 
+
+/* ===================== STATISTIKY (admin) ===================== */
+const CZ_MONTHS = ['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+function orderDayIso(o) {
+  if (o && o.createdAt && o.createdAt.seconds) return pragueDay(new Date(o.createdAt.seconds * 1000));
+  const m = /(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})/.exec(String((o && o.date) || ''));
+  return m ? m[3] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[1]).padStart(2, '0') : '';
+}
+const czk = (n) => Math.round(n || 0).toLocaleString('cs-CZ') + ' Kč';
+function StatsAdmin({ orders }) {
+  const [visits, setVisits] = useState(null);
+  const [err, setErr] = useState('');
+  const [year, setYear] = useState(() => +pragueDay().slice(0, 4));
+  const [skipTest, setSkipTest] = useState(true);
+  const [noStats, setNoStats] = useState(() => { try { return !!localStorage.getItem('adr_nostats'); } catch { return false; } });
+  useEffect(() => {
+    const f = getFb(); if (!f) return;
+    f.db.collection('visits').get().then(qs => setVisits(qs.docs.map(d => ({ day: d.id, ...d.data() }))))
+      .catch(e => { setVisits([]); setErr(fbErr(e)); });
+  }, []);
+  const ords = (orders || []).filter(o => !(skipTest && /^TEST/i.test(String(o.id || o._id || '')))).map(o => ({ ...o, _day: orderDayIso(o) })).filter(o => o._day);
+  const years = [...new Set([+pragueDay().slice(0, 4), ...ords.map(o => +o._day.slice(0, 4)), ...(visits || []).map(v => +v.day.slice(0, 4))])].sort((a, b) => b - a);
+  const months = CZ_MONTHS.map((name, i) => {
+    const key = year + '-' + String(i + 1).padStart(2, '0');
+    const os = ords.filter(o => o._day.startsWith(key));
+    const vs = (visits || []).filter(v => v.day.startsWith(key));
+    const sum = (arr, k) => arr.reduce((a, x) => a + (Number(x[k]) || 0), 0);
+    return { name, key, orders: os.length, net: sum(os, 'subtotal'), gross: sum(os, 'total'),
+      visitors: sum(vs, 'visitors'), visits: sum(vs, 'visits'), views: sum(vs, 'views') };
+  });
+  const tot = months.reduce((a, m) => { Object.keys(m).forEach(k => { if (typeof m[k] === 'number') a[k] = (a[k] || 0) + m[k]; }); return a; }, {});
+  const maxNet = Math.max(1, ...months.map(m => m.net)), maxVisits = Math.max(1, ...months.map(m => m.visits));
+  const today = pragueDay(); const tv = (visits || []).find(v => v.day === today) || {};
+  const nowKey = today.slice(0, 7);
+  const firstDay = (visits || []).map(v => v.day).sort()[0];
+  const top = (() => {
+    const map = new Map();
+    ords.filter(o => o._day.startsWith(String(year))).forEach(o => (o.items || []).forEach(i => {
+      const k = i.code || i.name; const r = map.get(k) || { name: i.name, code: i.code, qty: 0, net: 0 };
+      r.qty += Number(i.qty) || 0; r.net += (Number(i.price) || 0) * (Number(i.qty) || 0); map.set(k, r);
+    }));
+    return [...map.values()].sort((a, b) => b.net - a.net).slice(0, 10);
+  })();
+  const toggleNoStats = () => { try { if (noStats) localStorage.removeItem('adr_nostats'); else localStorage.setItem('adr_nostats', '1'); } catch {} setNoStats(!noStats); };
+  const Card = ({ label, value, sub }) => <div className="stat-card"><div className="stat-label">{label}</div><div className="stat-value">{value}</div>{sub && <div className="stat-sub">{sub}</div>}</div>;
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10,marginBottom:12}}>
+        <h3 style={{margin:0}}>📊 Statistiky {year}</h3>
+        <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+          <select className="offer-in" value={year} onChange={e => setYear(+e.target.value)}>{years.map(y => <option key={y} value={y}>{y}</option>)}</select>
+          <label style={{fontSize:13,display:'flex',gap:6,alignItems:'center'}}><input type="checkbox" checked={skipTest} onChange={e => setSkipTest(e.target.checked)}/> bez testovacích objednávek</label>
+        </div>
+      </div>
+      {err && <p style={{color:'var(--red)',fontWeight:600}}>Návštěvnost nelze načíst: {err}</p>}
+      <div className="stat-grid">
+        <Card label="Obrat bez DPH" value={czk(tot.net)} sub={'s DPH ' + czk(tot.gross)}/>
+        <Card label="Objednávky" value={tot.orders || 0} sub={tot.orders ? 'průměr ' + czk(tot.net / tot.orders) + ' bez DPH' : '—'}/>
+        <Card label="Návštěvy" value={(tot.visits || 0).toLocaleString('cs-CZ')} sub={(tot.visitors || 0).toLocaleString('cs-CZ') + ' návštěvníků · ' + (tot.views || 0).toLocaleString('cs-CZ') + ' zobrazení'}/>
+        <Card label="Konverze" value={tot.visits ? (100 * (tot.orders || 0) / tot.visits).toLocaleString('cs-CZ', { maximumFractionDigits: 2 }) + ' %' : '—'} sub="objednávky / návštěvy"/>
+        <Card label="Dnes" value={(tv.visits || 0) + ' návštěv'} sub={(tv.visitors || 0) + ' návštěvníků · ' + (tv.views || 0) + ' zobrazení'}/>
+      </div>
+      <div className="table-scroll" style={{marginTop:16}}>
+        <table className="offer-table stat-table">
+          <thead><tr><th>Měsíc</th><th style={{textAlign:'right'}}>Objednávky</th><th>Obrat bez DPH</th><th style={{textAlign:'right'}}>Obrat s DPH</th><th>Návštěvy</th><th style={{textAlign:'right'}}>Návštěvníci</th><th style={{textAlign:'right'}}>Zobrazení</th><th style={{textAlign:'right'}}>Konverze</th></tr></thead>
+          <tbody>
+            {months.map(m => {
+              const future = m.key > nowKey;
+              return (
+                <tr key={m.key} style={future ? {opacity:0.4} : m.key === nowKey ? {background:'#fffbeb'} : null}>
+                  <td style={{fontWeight:600}}>{m.name}</td>
+                  <td style={{textAlign:'right'}}>{future ? '—' : m.orders}</td>
+                  <td><div className="stat-bar-cell"><div className="stat-bar" style={{width: (100 * m.net / maxNet) + '%'}}/><span>{future ? '—' : czk(m.net)}</span></div></td>
+                  <td style={{textAlign:'right',whiteSpace:'nowrap'}}>{future ? '—' : czk(m.gross)}</td>
+                  <td><div className="stat-bar-cell"><div className="stat-bar blue" style={{width: (100 * m.visits / maxVisits) + '%'}}/><span>{future ? '—' : m.visits.toLocaleString('cs-CZ')}</span></div></td>
+                  <td style={{textAlign:'right'}}>{future ? '—' : m.visitors.toLocaleString('cs-CZ')}</td>
+                  <td style={{textAlign:'right'}}>{future ? '—' : m.views.toLocaleString('cs-CZ')}</td>
+                  <td style={{textAlign:'right'}}>{future || !m.visits ? '—' : (100 * m.orders / m.visits).toLocaleString('cs-CZ', { maximumFractionDigits: 2 }) + ' %'}</td>
+                </tr>);
+            })}
+            <tr style={{fontWeight:800,borderTop:'2px solid var(--text)'}}>
+              <td>Celkem {year}</td><td style={{textAlign:'right'}}>{tot.orders || 0}</td><td>{czk(tot.net)}</td><td style={{textAlign:'right',whiteSpace:'nowrap'}}>{czk(tot.gross)}</td>
+              <td>{(tot.visits || 0).toLocaleString('cs-CZ')}</td><td style={{textAlign:'right'}}>{(tot.visitors || 0).toLocaleString('cs-CZ')}</td><td style={{textAlign:'right'}}>{(tot.views || 0).toLocaleString('cs-CZ')}</td>
+              <td style={{textAlign:'right'}}>{tot.visits ? (100 * (tot.orders || 0) / tot.visits).toLocaleString('cs-CZ', { maximumFractionDigits: 2 }) + ' %' : '—'}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      {top.length > 0 && <>
+        <h4 style={{margin:'20px 0 8px'}}>Nejprodávanější položky {year}</h4>
+        <div className="table-scroll">
+          <table className="offer-table">
+            <thead><tr><th>#</th><th>Položka</th><th style={{textAlign:'right'}}>Kusů</th><th style={{textAlign:'right'}}>Obrat bez DPH</th></tr></thead>
+            <tbody>{top.map((t, i) => <tr key={i}><td>{i + 1}</td><td>{t.name}{t.code && <small style={{color:'var(--text-muted)'}}> · {t.code}</small>}</td><td style={{textAlign:'right'}}>{t.qty}</td><td style={{textAlign:'right',whiteSpace:'nowrap'}}>{czk(t.net)}</td></tr>)}</tbody>
+          </table>
+        </div>
+      </>}
+      <p style={{fontSize:12,color:'var(--text-muted)',marginTop:16,lineHeight:1.6}}>
+        Obrat = součet objednávek z e-shopu (bez poštovného a balného), podle data vytvoření objednávky. Návštěvy počítá e-shop sám od {firstDay ? czDate(firstDay) : 'nasazení počítadla'}; nepočítá roboty ani prohlížeč, ve kterém jste přihlášen jako admin. Návštěvnost i za dřívější období najdete v Cloudflare → adrparts.cz → Analytics &amp; Logs.
+        <br/><label style={{display:'inline-flex',gap:6,alignItems:'center',marginTop:6,cursor:'pointer'}}><input type="checkbox" checked={noStats} onChange={toggleNoStats}/> Nepočítat návštěvy z tohoto prohlížeče</label>
+      </p>
+    </div>
+  );
+}
+
 /* ===================== CART PAGE ===================== */
 function CartPage() {
   const { cart, updateCartQty, removeFromCart, setPage } = useApp();
@@ -4401,6 +4536,7 @@ function AdminPage() {
   const [data, setData] = useState({ users: [], orders: [], withdrawals: [], offers: [], offersError: '', loaded: false, error: '' });
   const isAdmin = !!(user && user.uid && user.isAdmin);
   const tsOf = (o) => (o && o.createdAt && o.createdAt.seconds) || 0;
+  useEffect(() => { if (user && user.isAdmin) { try { localStorage.setItem('adr_nostats', '1'); } catch {} } }, [user && user.isAdmin]);
 
   const load = useCallback(() => {
     const f = getFb(); if(!f) return;
@@ -4505,7 +4641,11 @@ function AdminPage() {
         <button className={`page-btn${tab==='notice'?' active':''}`} onClick={()=>setTab('notice')}>
           📢 Oznámení
         </button>
+        <button className={`page-btn${tab==='stats'?' active':''}`} onClick={()=>setTab('stats')}>
+          📊 Statistiky
+        </button>
       </div>
+      {tab === 'stats' && <StatsAdmin orders={orders}/>}
       {tab === 'notice' && <NoticeAdmin/>}
       {tab === 'offers' && <OffersAdmin offers={data.offers} users={users} error={data.offersError} reload={load}/>}
       {tab === 'withdrawals' && (
@@ -4949,6 +5089,7 @@ function App() {
   const [toast, setToast] = useState(null);
 
   const setPage = useCallback((p) => { setPageState(p); window.scrollTo(0,0); }, []);
+  useEffect(() => { const t = setTimeout(trackVisit, 400); return () => clearTimeout(t); }, [page]);
   const showToast = useCallback((msg) => { setToast(msg); }, []);
 
   const addToCart = useCallback((product, qty=1) => {
