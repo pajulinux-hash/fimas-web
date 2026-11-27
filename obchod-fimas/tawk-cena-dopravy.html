@@ -32,7 +32,7 @@
           return {
             name: tr.getAttribute('data-name') || (a ? a.textContent : ''),
             qty: num(tr.getAttribute('data-qty')),
-            price: num(tr.getAttribute('data-price')),   // cena/ks bez DPH
+            price: num(tr.getAttribute('data-price')),   /* cena/ks bez DPH */
             id: m ? 'd' + m[1] : ''
           };
         }).filter(function (i) { return i.qty > 0; });
@@ -49,7 +49,7 @@
       attrs['kosik-' + (k + 1)] = clip(i.qty + '× ' + i.name + (i.id ? ' [' + i.id + ']' : '') + ' – ' + kc(i.price) + '/ks bez DPH');
     });
     if (items.length > shown.length) attrs['kosik-41'] = '… a další ' + polozek(items.length - shown.length);
-    for (n = shown.length + 1; n <= Math.min(sentCount, 40); n++) attrs['kosik-' + n] = '-';  // přepsat starší položky
+    for (n = shown.length + 1; n <= Math.min(sentCount, 40); n++) attrs['kosik-' + n] = '-';  /* přepsat starší položky */
     return { attrs: attrs, items: items.length, pcs: pcs, net: net };
   }
 
@@ -74,6 +74,6 @@
     var text = typeof m === 'string' ? m : (m && (m.message || m.text || m.msg)) || '';
     if (RE.test(text)) sendCart();
   };
-  window.__fimasSendCartToChat = sendCart;   // pro ruční test v konzoli
+  window.__fimasSendCartToChat = sendCart;   /* pro ruční test v konzoli */
 })();
 </script>
