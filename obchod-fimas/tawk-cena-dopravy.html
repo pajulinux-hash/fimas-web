@@ -1,0 +1,79 @@
+<!-- FIMAS – Tawk.to: dotaz na cenu dopravy
+     Když zákazník v chatu klikne na „Chci znát cenu dopravy“ (nebo napíše o dopravě / poštovném / balném),
+     skript přečte jeho košík na obchod.fimas.cz a pošle ho operátorovi do tawk.to:
+       – atributy návštěvníka „kosik“, „kosik-1“, „kosik-2“… (panel s údaji o návštěvníkovi v dashboard.tawk.to),
+       – událost „cena-dopravy“ v chatu a štítek „cena-dopravy“.
+     Zákazníkovi se nic nezobrazuje, nic se neodesílá mimo tawk.to.
+     Vložit do Webarealu za kód tawk.to (patička / vlastní kód na všech stránkách). -->
+<script>
+(function () {
+  var RE = /dopravy|dopravu|doprava|po[šs]tovn|baln[ée]/i;
+  var BASKET_URL = '/fimas/e-basket';
+  var SITE = 'obchod.fimas.cz';
+  var sentCount = 0, lastSend = 0;
+
+  function clip(s) {
+    s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+    if (s.length > 250) s = s.slice(0, 249) + '…';
+    return s || '-';
+  }
+  function kc(n) { return (Math.round(n * 100) / 100).toLocaleString('cs-CZ') + ' Kč'; }
+  function polozek(n) { return n + (n === 1 ? ' položka' : n >= 2 && n <= 4 ? ' položky' : ' položek'); }
+  function num(v) { return parseFloat(String(v == null ? '' : v).replace(/\s/g, '').replace(',', '.')) || 0; }
+
+  function readBasket() {
+    return fetch(BASKET_URL, { credentials: 'same-origin' })
+      .then(function (r) { return r.text(); })
+      .then(function (html) {
+        var d = new DOMParser().parseFromString(html, 'text/html');
+        return Array.prototype.map.call(d.querySelectorAll('tr.cart-item'), function (tr) {
+          var a = tr.querySelector('td.box_text a');
+          var m = a && /-d(\d+)\.htm/.exec(a.getAttribute('href') || '');
+          return {
+            name: tr.getAttribute('data-name') || (a ? a.textContent : ''),
+            qty: num(tr.getAttribute('data-qty')),
+            price: num(tr.getAttribute('data-price')),   // cena/ks bez DPH
+            id: m ? 'd' + m[1] : ''
+          };
+        }).filter(function (i) { return i.qty > 0; });
+      });
+  }
+
+  function cartAttrs(items) {
+    var pcs = 0, net = 0, attrs = {}, shown = items.slice(0, 40), n;
+    items.forEach(function (i) { pcs += i.qty; net += i.qty * i.price; });
+    attrs['kosik'] = items.length
+      ? clip(polozek(items.length) + ', ' + pcs + ' ks, ' + kc(net) + ' bez DPH (' + SITE + ')')
+      : 'prázdný (' + SITE + ')';
+    shown.forEach(function (i, k) {
+      attrs['kosik-' + (k + 1)] = clip(i.qty + '× ' + i.name + (i.id ? ' [' + i.id + ']' : '') + ' – ' + kc(i.price) + '/ks bez DPH');
+    });
+    if (items.length > shown.length) attrs['kosik-41'] = '… a další ' + polozek(items.length - shown.length);
+    for (n = shown.length + 1; n <= Math.min(sentCount, 40); n++) attrs['kosik-' + n] = '-';  // přepsat starší položky
+    return { attrs: attrs, items: items.length, pcs: pcs, net: net };
+  }
+
+  function sendCart() {
+    var T = window.Tawk_API;
+    if (!T || !T.setAttributes || Date.now() - lastSend < 10000) return;
+    lastSend = Date.now();
+    readBasket().then(function (items) {
+      var r = cartAttrs(items);
+      sentCount = r.items;
+      T.setAttributes(r.attrs, function (err) { if (err) console.warn('[FIMAS chat] setAttributes', err); });
+      T.addEvent('cena-dopravy', { polozek: String(r.items), kusu: String(r.pcs), 'bez-dph': kc(r.net), web: SITE },
+        function (err) { if (err) console.warn('[FIMAS chat] addEvent', err); });
+      if (T.addTags) T.addTags(['cena-dopravy'], function () {});
+    }).catch(function (e) { console.warn('[FIMAS chat] košík se nepodařilo načíst', e); });
+  }
+
+  window.Tawk_API = window.Tawk_API || {};
+  var prev = window.Tawk_API.onChatMessageVisitor;
+  window.Tawk_API.onChatMessageVisitor = function (m) {
+    try { if (typeof prev === 'function') prev(m); } catch (e) {}
+    var text = typeof m === 'string' ? m : (m && (m.message || m.text || m.msg)) || '';
+    if (RE.test(text)) sendCart();
+  };
+  window.__fimasSendCartToChat = sendCart;   // pro ruční test v konzoli
+})();
+</script>

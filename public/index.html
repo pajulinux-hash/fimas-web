@@ -4962,6 +4962,40 @@ function chatOpenNow(d) {
   } catch(e) { return true; }
 }
 
+/* Cena dopravy v chatu: když zákazník klikne na „Chci znát cenu dopravy“ (nebo napíše o dopravě/poštovném),
+   pošleme operátorovi obsah košíku – atributy návštěvníka (panel vpravo v dashboard.tawk.to), událost v chatu
+   a štítek „cena-dopravy“. Tawk.to: klíče jen písmena/čísla/pomlčky, hodnota max 255 znaků, max 50 atributů. */
+const CHAT_SHIPPING_RE = /dopravy|dopravu|doprava|po[šs]tovn|balné|balne/i;
+function chatCartAttrs(cart, prevCount) {
+  const items = (Array.isArray(cart) ? cart : []).filter(i => i && i.qty > 0);
+  const clip = (s) => String(s).replace(/\s+/g, ' ').trim().slice(0, 250) || '-';
+  const pcs = items.reduce((s, i) => s + (+i.qty || 0), 0);
+  const net = items.reduce((s, i) => s + (+i.qty || 0) * (+i.price || 0), 0);
+  const polozek = (n) => n + (n === 1 ? ' položka' : n >= 2 && n <= 4 ? ' položky' : ' položek');
+  const attrs = { 'kosik': items.length ? clip(`${polozek(items.length)}, ${pcs} ks, ${fmtPrice(net)} bez DPH (adrparts.cz)`) : 'prázdný (adrparts.cz)' };
+  const shown = items.slice(0, 40);
+  shown.forEach((i, n) => {
+    attrs['kosik-' + (n + 1)] = clip(`${i.qty}× ${i.name}${i.code ? ' [' + i.code + ']' : ''} – ${fmtPrice(i.price)}/ks bez DPH`);
+  });
+  if (items.length > shown.length) attrs['kosik-41'] = `… a další ${polozek(items.length - shown.length)}`;
+  // starší položky z dřívějšího odeslání přepsat (prázdnou hodnotu Tawk.to nepřijme)
+  for (let n = shown.length + 1; n <= Math.min(prevCount || 0, 40); n++) attrs['kosik-' + n] = '-';
+  return { attrs, items: items.length, pcs, net };
+}
+function sendCartToChat() {
+  const T = window.Tawk_API;
+  if (!T || !T.setAttributes || Date.now() - (window.__chatCartAt || 0) < 10000) return;
+  window.__chatCartAt = Date.now();
+  let cart = [];
+  try { cart = JSON.parse(localStorage.getItem('adr_cart') || '[]'); } catch(e) {}
+  const r = chatCartAttrs(cart, window.__chatCartSent || 0);
+  window.__chatCartSent = r.items;
+  try { T.setAttributes(r.attrs, (err) => { if (err) console.warn('[chat] setAttributes', err); }); } catch(e) {}
+  try { T.addEvent('cena-dopravy', { polozek: String(r.items), kusu: String(r.pcs), 'bez-dph': fmtPrice(r.net) }, (err) => { if (err) console.warn('[chat] addEvent', err); }); } catch(e) {}
+  try { T.addTags(['cena-dopravy'], () => {}); } catch(e) {}
+}
+function chatVisitorText(m) { return typeof m === 'string' ? m : (m && (m.message || m.text || m.msg)) || ''; }
+
 function ChatWidget() {
   // Tawk.to live chat — stejný účet jako obchod.fimas.cz (dashboard.tawk.to)
   // Bez souhlasu se zobrazí vlastní tlačítko "Chat"; kliknutí = souhlas → načte Tawk.to a rovnou otevře okno.
@@ -4991,6 +5025,9 @@ function ChatWidget() {
     setLoading(true);
     window.Tawk_API = window.Tawk_API || {};
     window.Tawk_LoadStart = new Date();
+    window.Tawk_API.onChatMessageVisitor = function(m) {
+      if (CHAT_SHIPPING_RE.test(chatVisitorText(m))) sendCartToChat();
+    };
     window.Tawk_API.onLoad = function() {
       setLoading(false);
       if (openOnLoad.current) { try { window.Tawk_API.maximize(); } catch(e) {} openOnLoad.current = false; }
